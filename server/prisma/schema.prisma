@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =======================
+// 1. משתמשים (Users)
+// =======================
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // יהיה מוצפן
+  fullName  String?
+  createdAt DateTime @default(now())
+
+  // קשרים
+  memberships GroupMember[] // הקבוצות שהמשתמש הצטרף אליהן
+}
+
+// =======================
+// 2. מוצרים (Products)
+// =======================
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float    // מחיר רגיל
+  groupPrice  Float    // מחיר קבוצתי (הנחה)
+  image       String?
+  minMembers  Int      // מינימום משתתפים נדרש
+  
+  // קשרים
+  groups      Group[]
+}
+
+// =======================
+// 3. קבוצות רכישה (Groups)
+// =======================
+model Group {
+  id            String   @id @default(uuid())
+  productId     String
+  status        String   @default("OPEN") // OPEN, LOCKED, COMPLETED, FAILED
+  targetMembers Int
+  currentMembers Int     @default(0)
+  createdAt     DateTime @default(now())
+  deadline      DateTime
+
+  // קשרים
+  product       Product       @relation(fields: [productId], references: [id])
+  members       GroupMember[]
+}
+
+// =======================
+// 4. חברי קבוצה (טבלת קישור)
+// =======================
+model GroupMember {
+  id        String   @id @default(uuid())
+  userId    String
+  groupId   String
+  joinedAt  DateTime @default(now())
+  
+  // סטטוס תשלום אישי
+  paymentStatus String @default("PENDING") // PENDING, PAID, REFUNDED
+
+  // קשרים
+  user      User     @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id])
+}
