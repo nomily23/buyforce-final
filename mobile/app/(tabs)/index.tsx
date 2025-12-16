@@ -1,98 +1,143 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// 👇👇👇 ודאי שה-IP שלך כאן נכון!
+const API_URL = 'http://192.168.7.13:3000'; 
+const MY_USER_ID = 'e3fb6889-1ffb-42c1-9b9d-a27f1fb2c643'; 
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/groups`);
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProducts();
+    }, [])
+  );
+
+  const handleJoin = async (groupId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/groups/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId, userId: MY_USER_ID })
+      });
+
+      if (response.ok) {
+        Alert.alert('איזה כיף!', 'הצטרפת לקבוצה בהצלחה 🛍️');
+        fetchProducts(); 
+      } else {
+        Alert.alert('אופס', 'כבר הצטרפת לקבוצה הזו או שהיא מלאה');
+      }
+    } catch (error) {
+      Alert.alert('שגיאה', 'לא ניתן להתחבר לשרת');
+    }
+  };
+
+  const renderProduct = ({ item }: { item: any }) => {
+    // 🔒 בדיקה אם הקבוצה מלאה (לפי היעד שהגדרת ב-Prisma)
+    const isFull = item.currentMembers >= item.targetMembers;
+    const progress = item.currentMembers / item.targetMembers;
+
+    return (
+      <View style={styles.card}>
+        {/* 👇👇👇 כאן התיקון לתמונות שלא ייחתכו */}
+        <Image source={{ uri: item.product.image }} style={styles.image} />
+        
+        <View style={styles.info}>
+          <Text style={styles.name}>{item.product.name}</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.originalPrice}>₪{item.product.price}</Text>
+            <Text style={styles.groupPrice}>₪{item.product.groupPrice}</Text>
+          </View>
+          
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>
+              {isFull ? 'הקבוצה הגיעה ליעד!' : `${item.currentMembers} מתוך ${item.targetMembers} הצטרפו`}
+            </Text>
+            <View style={styles.progressBarBackground}>
+              <View 
+                style={[
+                  styles.progressBarFill, 
+                  { 
+                    width: `${Math.min(progress * 100, 100)}%`, 
+                    backgroundColor: isFull ? 'gray' : '#e91e63' // אפור אם מלא, ורוד אם לא
+                  }
+                ]} 
+              />
+            </View>
+          </View>
+
+          {/* כפתור ננעל אם הקבוצה מלאה */}
+          <TouchableOpacity 
+            style={[styles.joinButton, isFull && styles.disabledButton]} 
+            onPress={() => !isFull && handleJoin(item.id)}
+            disabled={isFull}
+          >
+            <Text style={styles.buttonText}>
+              {isFull ? 'הקבוצה מלאה! 🔒' : `הצטרף לקבוצה ב-₪${item.product.groupPrice}!`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>🔥 המוצרים החמים</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color="#e91e63" style={{marginTop: 50}} />
+      ) : (
+        <FlatList
+          data={products}
+          keyExtractor={(item) => item.id}
+          renderItem={renderProduct}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchProducts(); }} />
+          }
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5', paddingTop: 60 },
+  header: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 },
+  card: { backgroundColor: 'white', marginHorizontal: 20, marginBottom: 20, borderRadius: 15, overflow: 'hidden', elevation: 3 },
+  // 👇 שיניתי ל-contain כדי שיראו את כל המוצר
+  image: { width: '100%', height: 200, resizeMode: 'contain', backgroundColor: 'white', marginTop: 10 },
+  info: { padding: 15 },
+  name: { fontSize: 22, fontWeight: 'bold', marginBottom: 5, textAlign: 'left' },
+  priceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  originalPrice: { fontSize: 16, textDecorationLine: 'line-through', color: '#888', marginRight: 10 },
+  groupPrice: { fontSize: 24, fontWeight: 'bold', color: '#e91e63' },
+  progressContainer: { marginBottom: 15 },
+  progressText: { fontSize: 14, color: '#666', marginBottom: 5, textAlign: 'right' },
+  progressBarBackground: { height: 10, backgroundColor: '#e0e0e0', borderRadius: 5, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 5 },
+  joinButton: { backgroundColor: '#e91e63', padding: 15, borderRadius: 10, alignItems: 'center' },
+  disabledButton: { backgroundColor: '#9e9e9e' }, // צבע אפור כשהכפתור נעול
+  buttonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 });
