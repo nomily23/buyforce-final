@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Image } fro
 import { useRouter } from 'expo-router';
 
 // 👇👇👇 ודאי שה-IP כאן מעודכן (בלי /products בסוף!)
-const API_URL = 'http://192.168.7.13:3000'; 
+const API_URL = 'http://192.168.7.12:3000'; 
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -13,7 +13,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     try {
       // שליחת הפרטים לשרת לבדיקה
-      const response = await fetch(`${API_URL}/users/login`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -68,6 +68,12 @@ export default function LoginScreen() {
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>כניסה למערכת</Text>
       </TouchableOpacity>
+
+      {/* ⬅️⬅️⬅️ כאן הוספנו את כפתור המעבר להרשמה */}
+      <TouchableOpacity onPress={() => router.push('/register')} style={styles.linkButton}>
+        <Text style={styles.linkText}>אין לך משתמש? לחצי כאן להרשמה</Text>
+      </TouchableOpacity>
+
     </View>
   );
 }
@@ -94,5 +100,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
     elevation: 3 
   },
-  buttonText: { color: 'white', fontWeight: 'bold', fontSize: 18 }
+  buttonText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+
+  // ⬅️⬅️⬅️ כאן הוספנו את העיצוב לכפתור החדש
+  linkButton: { 
+    marginTop: 20, 
+    alignItems: 'center' 
+  },
+  linkText: { 
+    color: '#e91e63', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  }
 });

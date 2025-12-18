@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, Alert, Activ
 import { useFocusEffect } from 'expo-router';
 
 // 👇👇👇 ודאי שה-IP שלך כאן נכון!
-const API_URL = 'http://192.168.7.13:3000'; 
+const API_URL = 'http://192.168.7.12:3000'; 
 const MY_USER_ID = 'e3fb6889-1ffb-42c1-9b9d-a27f1fb2c643'; 
 
 export default function HomeScreen() {
