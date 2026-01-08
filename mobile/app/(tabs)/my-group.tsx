@@ -31,15 +31,12 @@ export default function MyGroupsScreen() {
     return isNaN(number) ? 0 : number;
   };
 
-  // פונקציית עזר לפרמוט תאריך (לקבלה)
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '';
-    // מטפל במקרה שזה Timestamp של פיירבייס או תאריך רגיל
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleDateString('he-IL');
   };
 
-  // פונקציית עזר לחישוב ימים שנותרו
   const getDaysLeft = (deadlineStr: string) => {
     if (!deadlineStr) return null;
     const end = new Date(deadlineStr);
@@ -144,8 +141,8 @@ export default function MyGroupsScreen() {
         const liveProduct = productsMap[order.productId];
         
         const isProductFailed = liveProduct?.status === 'failed'; 
-        const isOrderRefunded = order.status === 'refunded'; // שים לב ל-Lowercase אם ככה שמרת
-        const isOrderREFUNDED = order.status === 'REFUNDED'; // שים לב ל-Uppercase מהאדמין
+        const isOrderRefunded = order.status === 'refunded'; 
+        const isOrderREFUNDED = order.status === 'REFUNDED'; 
         
         const isFailedState = isProductFailed || isOrderRefunded || isOrderREFUNDED;
 
@@ -177,7 +174,7 @@ export default function MyGroupsScreen() {
             totalAmountPaid: totalAmountPaid, 
             isFullyPaid: remaining === 0,
             isFailed: isFailedState,
-            deadline: liveProduct?.deadline // הוספנו דדליין
+            deadline: liveProduct?.deadline 
         };
     }).filter(item => item !== null);
   };
@@ -217,7 +214,7 @@ export default function MyGroupsScreen() {
         if (confirmed) proceedToPayment();
     } else {
         Alert.alert(
-            "Complete Purchase 🎉", 
+            "Complete Purchase ", 
             `The group reached its target!\nProceed to pay the remaining balance of ₪${remainingPrice}?`,
             [
               { text: "Cancel", style: "cancel" },
@@ -272,14 +269,12 @@ export default function MyGroupsScreen() {
                     <Text style={styles.paid}>Status: {item.isFullyPaid ? 'Completed 🏁' : 'Active 🏃'}</Text>
                 )}
 
-                {/* תצוגת תאריך הזמנה */}
                 <Text style={styles.dateText}>Ordered on: {formatDate(item.timestamp)}</Text>
             </View>
         </View>
 
         <View style={styles.statusSection}>
             
-            {/* מקרה 1: נכשל */}
             {item.isFailed ? (
                 <View style={{marginTop: 5, backgroundColor: '#FFEBEE', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#FFCDD2'}}>
                     <Text style={{color: '#D32F2F', fontWeight: 'bold', fontSize: 16, textAlign: 'center'}}>
@@ -290,7 +285,6 @@ export default function MyGroupsScreen() {
                     </Text>
                 </View>
             ) : item.isCompleted ? (
-              // מקרה 2: הצליח
               <>
                 <Text style={[styles.statusTitle, {color: '#4CAF50'}]}>Group Completed! 🎉</Text>
                 <View style={styles.progressBarBackground}>
@@ -298,7 +292,6 @@ export default function MyGroupsScreen() {
                 </View>
                 
                 {item.isFullyPaid ? (
-                    // שולם הכל
                     <View style={{marginTop: 10, backgroundColor: '#e8f5e9', padding: 10, borderRadius: 8}}>
                         <Text style={{color: '#2e7d32', fontWeight: 'bold', fontSize: 16, textAlign: 'center'}}>
                             Product is on its way 🚚
@@ -321,7 +314,6 @@ export default function MyGroupsScreen() {
                 )}
               </>
             ) : (
-              // מקרה 3: פעיל
               <>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
                     <Text style={styles.statusTitle}>Waiting for buyers ⏳</Text>

@@ -8,26 +8,25 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// נתוני השאלות והתשובות
 const faqData = [
   {
     id: 1,
-    question: "🛍️ How do group buys work?",
+    question: " How do group buys work?",
     answer: "You join a group by paying a small deposit (usually ₪1). Once the group reaches the target number of buyers, the deal is unlocked! You then pay the remaining balance, and the product is shipped."
   },
   {
     id: 2,
-    question: "💰 What if the group isn't completed?",
+    question: " What if the group isn't completed?",
     answer: "No worries! We have a 100% Money-Back Guarantee. If a group fails to reach the target within the time limit, your deposit is automatically refunded to your original payment method."
   },
   {
     id: 3,
-    question: "🚚 Shipping & Delivery",
+    question: "Shipping & Delivery",
     answer: "After the group is completed and you pay the balance, the supplier processes your order. Shipping usually takes 3-7 business days. You will receive a tracking number via email."
   },
   {
     id: 4,
-    question: "🔒 Is my payment secure?",
+    question: "Is my payment secure?",
     answer: "Yes. We use industry-standard SSL encryption and secure payment gateways (like PayPal and Credit Cards) to ensure your financial data is never exposed."
   },
   {
@@ -43,7 +42,7 @@ export default function HelpScreen() {
 
   const toggleExpand = (id: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedId(expandedId === id ? null : id); // סגור אם פתוח, פתח אם סגור
+    setExpandedId(expandedId === id ? null : id); 
   };
 
   const handleContactSupport = () => {
@@ -54,7 +53,6 @@ export default function HelpScreen() {
   };
 
   const handleWhatsApp = () => {
-      // דמו לפתיחת וואטסאפ
       const url = "https://wa.me/972500000000"; 
       Linking.openURL(url).catch(() => alert('Cannot open WhatsApp'));
   };
@@ -63,7 +61,6 @@ export default function HelpScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -73,7 +70,6 @@ export default function HelpScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* Contact Buttons */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Need help?</Text>
           <Text style={styles.cardText}>
@@ -93,7 +89,6 @@ export default function HelpScreen() {
           </View>
         </View>
 
-        {/* FAQ Section - Accordion */}
         <Text style={styles.sectionHeader}>Frequently Asked Questions</Text>
 
         {faqData.map((item) => {

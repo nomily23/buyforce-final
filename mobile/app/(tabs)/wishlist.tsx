@@ -74,7 +74,6 @@ export default function WishlistScreen() {
           return; 
       }
 
-      // בדיקה נוספת למקרה שהמשתמש לחץ מהר לפני שהכפתור התעדכן
       const current = item.currentBuyers || 0;
       const target = item.targetBuyers || 10;
       if (current >= target) {
@@ -125,13 +124,11 @@ export default function WishlistScreen() {
         ? { uri: imgLink } 
         : { uri: 'https://dummyimage.com/100x100/cccccc/000000.png&text=No+Img' };
     
-    // בדיקות סטטוס
     const isAlreadyJoined = userOrders.includes(item.id);
     const current = item.currentBuyers || 0;
     const target = item.targetBuyers || 10;
     const isFull = current >= target; // האם הקבוצה מלאה?
 
-    // חישוב הנחה
     const regPrice = parseFloat(item.regularPrice || item.price || '0');
     const grpPrice = parseFloat(item.groupPrice || '0');
     const discountPercent = regPrice > 0 ? Math.round(((regPrice - grpPrice) / regPrice) * 100) : 0;
@@ -167,7 +164,6 @@ export default function WishlistScreen() {
                     )}
                 </View>
 
-                {/* --- הכפתור החכם המתוקן --- */}
                 <TouchableOpacity 
                     style={[
                         styles.joinButton, 

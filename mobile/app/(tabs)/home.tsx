@@ -25,11 +25,9 @@ export default function CatalogScreen() {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // נתונים סטטיים לחיפוש (Trending / Recent)
   const trendingSearches = ['iPhone', 'Dyson', 'TV', 'Sony', 'Laptop'];
   const recentSearches = ['Galaxy S24', 'Coffee Machine', 'Headphones'];
 
-  // טעינת נתונים
   useEffect(() => {
     const productsRef = collection(db, 'products');
     const unsubscribe = onSnapshot(productsRef, (snapshot) => {
@@ -53,7 +51,6 @@ export default function CatalogScreen() {
     return () => unsubscribe();
   }, []);
 
-  // --- לוגיקת הסינון החכמה ---
 
   const productsByCategory = selectedCategory === 'All' 
     ? products 
@@ -77,7 +74,6 @@ export default function CatalogScreen() {
 
   const newArrivals = [...productsByCategory].reverse().slice(0, 5);
 
-  // סינון עבור החיפוש
   const filteredProducts = products.filter(product => {
     const title = (product.title || product.name || '').toLowerCase();
     const q = searchQuery.toLowerCase();
@@ -276,7 +272,6 @@ export default function CatalogScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 👇👇👇 ההדר החדש עם כפתור המתנה 👇👇👇 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>BuyForce</Text>
         
@@ -286,13 +281,11 @@ export default function CatalogScreen() {
                 <Ionicons name="gift-outline" size={24} color="#E91E63" />
             </TouchableOpacity>
 
-            {/* כפתור חיפוש */}
             <TouchableOpacity onPress={() => setIsSearchVisible(true)} style={styles.searchIconBtn}>
                 <Ionicons name="search" size={26} color="#333" />
             </TouchableOpacity>
         </View>
       </View>
-      {/* 👆👆👆 סוף ההדר החדש 👆👆👆 */}
 
       <FlatList
         ListHeaderComponent={MainHeader}
@@ -310,7 +303,6 @@ export default function CatalogScreen() {
         }
       />
       
-      {/* מסך החיפוש */}
       <Modal visible={isSearchVisible} animationType="slide" onRequestClose={() => setIsSearchVisible(false)}>
         <SafeAreaView style={styles.modalContainer}>
               <View style={styles.searchHeader}>

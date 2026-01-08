@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Share, Image, SafeAreaView, Platform } from 'react-native';
-import { useRouter, Stack } from 'expo-router'; // הוספנו את Stack
+import { useRouter, Stack } from 'expo-router'; 
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
@@ -20,13 +20,11 @@ export default function ModalScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 👇 השורה הזו מעלימה את הכותרת "tabs" המכוערת למעלה */}
       <Stack.Screen options={{ headerShown: false }} />
       
       <StatusBar style={isWeb ? "dark" : "light"} />
 
       <View style={styles.content}>
-        {/* כפתור X לסגירה למעלה */}
         <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
            <Ionicons name="close" size={28} color="#fff" />
         </TouchableOpacity>
@@ -41,19 +39,16 @@ export default function ModalScreen() {
                 Group buying is better together! Invite your friends to join active groups and you'll both get a <Text style={{fontWeight: 'bold'}}>₪20 Coupon</Text>.
             </Text>
 
-            {/* קופסה עם הקוד להעתקה */}
             <View style={styles.codeBox}>
                 <Text style={styles.codeLabel}>YOUR REFERRAL CODE</Text>
                 <Text style={styles.codeText}>BUY2025</Text>
             </View>
 
-            {/* כפתור שיתוף - ורוד */}
             <TouchableOpacity style={styles.shareButton} onPress={onShare}>
                 <Ionicons name="share-social-outline" size={24} color="#fff" style={{marginRight: 10}} />
                 <Text style={styles.shareButtonText}>Share Link</Text>
             </TouchableOpacity>
 
-            {/* 👇 כפתור חזרה חדש ויפה במקום סתם טקסט */}
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                 <Text style={styles.backButtonText}>Back to Home</Text>
             </TouchableOpacity>
@@ -67,7 +62,7 @@ export default function ModalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E91E63', // רקע ורוד למודל
+    backgroundColor: '#E91E63', 
   },
   content: {
       flex: 1,
@@ -81,7 +76,7 @@ const styles = StyleSheet.create({
       right: 20,
       zIndex: 10,
       padding: 10,
-      backgroundColor: 'rgba(0,0,0,0.1)', // רקע שקוף עדין ל-X
+      backgroundColor: 'rgba(0,0,0,0.1)', 
       borderRadius: 20
   },
   card: {
@@ -155,14 +150,13 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.3,
       shadowRadius: 5,
       elevation: 5,
-      marginBottom: 15 // רווח בין הכפתורים
+      marginBottom: 15 
   },
   shareButtonText: {
       color: '#fff',
       fontSize: 18,
       fontWeight: 'bold'
   },
-  // עיצוב לכפתור החזרה החדש
   backButton: {
       paddingVertical: 15,
       paddingHorizontal: 30,

@@ -9,28 +9,22 @@ export default function PaymentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   
-  // הוספנו את המחיר הרגיל (regularPrice) כדי לחשב חיסכון, אם קיים
   const { amount, currency, productName, productId, regularPrice } = params;
 
   const [loading, setLoading] = useState(false);
 
-  // האימייל שלך לפייפאל
   const MY_EMAIL = "nomilydaniely4@gmail.com"; 
   
   const currentAmount = amount ? amount.toString() : '1.00';
   const isMembershipFee = parseFloat(currentAmount) === 1;
 
-  // חישוב חיסכון (אם הועבר מחיר רגיל)
   const regPrice = parseFloat(regularPrice as string || '0');
   const payAmount = parseFloat(currentAmount);
-  // אם זה דמי חבר, החיסכון הוא תיאורטי על המוצר המלא, אבל נציג אותו רק אם זה רלוונטי
   const potentialSavings = regPrice > 0 ? regPrice - parseFloat(params.groupPrice as string || currentAmount) : 0;
 
-  // קישורים לפייפאל
   const PAYPAL_LINK = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${MY_EMAIL}&currency_code=ILS&amount=${currentAmount}&item_name=${productName}`;
   const CARD_LINK = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${MY_EMAIL}&currency_code=ILS&amount=${currentAmount}&item_name=${productName}&landing_page=billing&solution_type=Sole`;
 
-  // פונקציית ההצלחה (משותפת לכולם)
   const processPaymentSuccess = async () => {
     setLoading(true);
     try {
@@ -62,11 +56,11 @@ export default function PaymentScreen() {
         setTimeout(() => {
             setLoading(false);
             if (isMembershipFee) {
-                Alert.alert("Welcome! 🚀", "You joined the group successfully.", [
+                Alert.alert("Welcome! ", "You joined the group successfully.", [
                     { text: "Go to My Groups", onPress: () => router.push('/(tabs)/my-group') }
                 ]);
             } else {
-                Alert.alert("Payment Received! 🎁", "The product is on its way!", [
+                Alert.alert("Payment Received! ", "The product is on its way!", [
                     { text: "Awesome!", onPress: () => router.push('/(tabs)/my-group') }
                 ]);
             }
@@ -83,7 +77,6 @@ export default function PaymentScreen() {
     }
   };
 
-  // פתיחת קישור חיצוני (פייפאל)
   const openPaymentLink = async (link: string) => {
     const supported = await Linking.canOpenURL(link);
     if (supported) {
@@ -93,7 +86,7 @@ export default function PaymentScreen() {
             "Page opened in browser.\nComplete payment and return here.",
             [
                 { text: "Cancel", style: "cancel" },
-                { text: "I Paid! ✅", onPress: () => processPaymentSuccess() }
+                { text: "I Paid! ", onPress: () => processPaymentSuccess() }
             ]
         );
     } else {
@@ -101,7 +94,6 @@ export default function PaymentScreen() {
     }
   };
 
-  // פונקציה לתשלום "מהיר" עם הכרטיס השמור
   const handleSavedCardPayment = () => {
       Alert.alert(
           "Confirm Payment",
@@ -135,7 +127,6 @@ export default function PaymentScreen() {
             <Text style={styles.label}>PAYMENT FOR</Text>
             <Text style={styles.productName}>{productName}</Text>
             
-            {/* תצוגת חיסכון חכמה - רק אם יש נתונים */}
             {potentialSavings > 0 && !isMembershipFee && (
                 <View style={styles.savingsTag}>
                     <Text style={styles.savingsText}>✨ You are saving ₪{potentialSavings.toFixed(0)}!</Text>
@@ -147,7 +138,6 @@ export default function PaymentScreen() {
             <Text style={styles.amount}>₪{currentAmount}</Text>
         </View>
 
-        {/* כפתור תשלום מהיר עם הכרטיס השמור */}
         <View style={styles.savedCardSection}>
             <Text style={styles.sectionTitle}>SAVED METHOD</Text>
             <TouchableOpacity style={styles.savedCardButton} onPress={handleSavedCardPayment}>
@@ -178,7 +168,6 @@ export default function PaymentScreen() {
             <Text style={styles.cancelText}>Cancel Transaction</Text>
         </TouchableOpacity>
 
-        {/* --- תוספת חדשה: סמלי אמינות (Trust Badges) --- */}
         <View style={styles.trustBadgesContainer}>
             <Text style={styles.trustFooterText}>We accept secure payments via:</Text>
             <View style={styles.cardIconsRow}>
@@ -188,11 +177,9 @@ export default function PaymentScreen() {
                 <FontAwesome5 name="cc-apple-pay" size={30} color="#000" style={styles.cardIcon} />
             </View>
         </View>
-        {/* --------------------------------------------- */}
 
       </ScrollView>
 
-        {/* Loader Overlay */}
         {loading && (
             <View style={styles.loaderOverlay}>
                 <ActivityIndicator size="large" color="#E91E63" />
@@ -233,7 +220,6 @@ const styles = StyleSheet.create({
   divider: { height: 1, width: '100%', backgroundColor: '#f0f0f0', marginVertical: 15 },
   amount: { fontSize: 48, fontWeight: 'bold', color: '#E91E63' },
 
-  // Saved Card
   savedCardSection: { width: '100%', marginBottom: 25 },
   sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#999', marginBottom: 8, marginLeft: 5 },
   savedCardButton: {
@@ -258,13 +244,12 @@ const styles = StyleSheet.create({
   cancelLink: { padding: 10, marginBottom: 20 },
   cancelText: { color: '#888', fontSize: 14, textDecorationLine: 'underline' },
 
-  // Trust Badges Styles
   trustBadgesContainer: { alignItems: 'center', marginTop: 10, opacity: 0.7 },
   trustFooterText: { fontSize: 12, color: '#888', marginBottom: 8 },
   cardIconsRow: { flexDirection: 'row', gap: 15 },
   cardIcon: { opacity: 0.8 },
 
-  // Loader
+  
   loaderOverlay: {
       position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(255,255,255,0.9)', justifyContent: 'center', alignItems: 'center', zIndex: 10

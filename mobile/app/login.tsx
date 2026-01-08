@@ -25,12 +25,10 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   
-  // משתנים לשחזור סיסמה
   const [resetModalVisible, setResetModalVisible] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
-  // משתנים לביומטרי
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
 
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -47,13 +45,11 @@ export default function LoginScreen() {
     redirectUri: redirectUri, 
   });
 
-  // בדיקת תמיכה ביומטרית בטעינת הדף
   useEffect(() => {
     (async () => {
       try {
         const compatible = await LocalAuthentication.hasHardwareAsync();
         const enrolled = await LocalAuthentication.isEnrolledAsync();
-        // הכפתור יופיע רק אם יש חומרה וגם מוגדרות פנים/אצבע
         setIsBiometricSupported(compatible && enrolled);
       } catch (e) {
         console.log("Biometric check error:", e);
@@ -75,12 +71,10 @@ export default function LoginScreen() {
     }
   }, [response]);
 
-  // --- פונקציית התחברות ביומטרית (המתוקנת) ---
   const handleBiometricLogin = async () => {
       console.log("Starting biometric login...");
       
       try {
-          // בדיקה כפולה שיש הגדרות בטלפון
           const hasHardware = await LocalAuthentication.hasHardwareAsync();
           const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
@@ -91,8 +85,8 @@ export default function LoginScreen() {
 
           const result = await LocalAuthentication.authenticateAsync({
               promptMessage: 'Login with Face ID',
-              fallbackLabel: '',   // טריק: משאירים ריק כדי לא להציג כפתור סיסמה
-              disableDeviceFallback: true, // חובה: חוסם את המעבר לקוד הטלפון
+              fallbackLabel: '',   
+              disableDeviceFallback: true, 
               cancelLabel: 'Cancel'
           });
 
@@ -108,10 +102,8 @@ export default function LoginScreen() {
           }
       } catch (error: any) {
           console.log("Biometric error:", error);
-          // לא מקפיצים שגיאה למשתמש על כל ביטול, רק רושמים בלוג
       }
   };
-  // ---------------------------------------------
 
   const handleLogin = async () => {
     if (failedAttempts >= 5) {
@@ -245,7 +237,6 @@ export default function LoginScreen() {
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Sign In</Text>}
             </Pressable>
             
-            {/* 👇 כפתור ביומטרי (יופיע רק אם נתמך במכשיר) */}
             {isBiometricSupported && (
                 <TouchableOpacity style={styles.biometricButton} onPress={handleBiometricLogin}>
                     <Ionicons name="finger-print-outline" size={28} color="#E91E63" />
@@ -286,7 +277,6 @@ export default function LoginScreen() {
                 </Pressable>
             </View>
 
-            {/* אייקון אבטחה */}
             <View style={styles.secureContainer}>
                 <Ionicons name="shield-checkmark-outline" size={14} color="#888" />
                 <Text style={styles.secureText}>100% Secure Login</Text>

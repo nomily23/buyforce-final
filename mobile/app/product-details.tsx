@@ -26,39 +26,30 @@ export default function ProductDetailsScreen() {
       : 'https://dummyimage.com/600x600/f0f0f0/aaa.png&text=No+Image';
   const supplierName = supplier || 'Official Importer';
 
-  // המרת היעד למספר
   const target = parseFloat(targetBuyers as string || '10');
 
-  // שימוש במשתנה דינמי שמתעדכן בזמן אמת מהשרת
   const [dynamicCurrent, setDynamicCurrent] = useState(parseFloat(currentBuyers as string || '0'));
   
-  // חישוב אם הקבוצה מלאה
   const isFull = dynamicCurrent >= target;
 
-  // חישוב אחוזים
   const progress = target > 0 ? dynamicCurrent / target : 0;
   const progressPercent = `${Math.min(progress * 100, 100)}%`;
 
-  // --- תוספת חדשה: חישוב אחוזי הנחה ---
   const regularP = parseFloat(price as string || '0');
   const groupP = parseFloat(groupPrice as string || '0');
   const discountPercent = regularP > 0 ? Math.round(((regularP - groupP) / regularP) * 100) : 0;
-  // -------------------------------------
 
   const [isJoined, setIsJoined] = useState(false);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState('');
 
-  // 1. האזנה לשינויים בזמן אמת למוצר (כדי לדעת מתי הוא מתמלא)
   useEffect(() => {
     if (!id) return;
     
     const productRef = doc(db, 'products', String(id));
     const unsubscribe = onSnapshot(productRef, (docSnapshot) => {
         if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            // עדכון הכמות בזמן אמת
-            if (data.currentBuyers !== undefined) {
+            const data = docSnapshot.data();            if (data.currentBuyers !== undefined) {
                 setDynamicCurrent(data.currentBuyers);
             }
         }
@@ -67,7 +58,6 @@ export default function ProductDetailsScreen() {
     return () => unsubscribe();
   }, [id]);
 
-  // 2. האזנה לטיימר
   useEffect(() => {
     const calculateTimeLeft = () => {
         const endDate = deadline ? new Date(deadline as string) : new Date(Date.now() + 86400000); 
@@ -93,7 +83,6 @@ export default function ProductDetailsScreen() {
     return () => clearInterval(timer);
   }, [deadline]);
 
-  // 3. בדיקה אם המשתמש כבר הצטרף
   useEffect(() => {
     const user = auth.currentUser;
     if (!user || !id) {
@@ -168,7 +157,6 @@ export default function ProductDetailsScreen() {
               <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
           ),
-          // --- תוספת חדשה: כפתור הלב וכפתור השיתוף ---
           headerRight: () => (
             <View style={{flexDirection: 'row', gap: 10}}>
                 <TouchableOpacity 
@@ -186,7 +174,6 @@ export default function ProductDetailsScreen() {
                 </TouchableOpacity>
             </View>
           ),
-          // ------------------------------------------
         }} 
       />
 
@@ -212,7 +199,6 @@ export default function ProductDetailsScreen() {
                     </View>
                 </View>
 
-                {/* --- תוספת חדשה: אזור המחיר המעודכן עם תגית ההנחה --- */}
                 <View style={styles.priceContainer}>
                     <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'}}>
                         <View>
@@ -232,7 +218,6 @@ export default function ProductDetailsScreen() {
                         <Text style={styles.regularPrice}>₪{price}</Text>
                     </View>
                 </View>
-                {/* -------------------------------------------------- */}
 
                 <View style={styles.divider} />
 
@@ -358,7 +343,6 @@ const styles = StyleSheet.create({
   disabledButton: { backgroundColor: '#ccc' }, 
   joinButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 
-  // --- תוספת: סטיילים חדשים לתגית ההנחה ---
   discountBadge: {
     backgroundColor: '#E91E63',
     paddingHorizontal: 10,
@@ -371,5 +355,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14
   }
-  // ---------------------------------------
 });

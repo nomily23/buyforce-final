@@ -7,17 +7,15 @@ export default function PaymentMethodsScreen() {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
   
-  // נתונים מדומים של כרטיסים - הוספנו שדה isDefault
   const [cards, setCards] = useState([
     { id: '1', type: 'visa', last4: '4242', exp: '12/26', holder: 'NOMILY DANIELY', isDefault: true },
     { id: '2', type: 'mastercard', last4: '8899', exp: '09/25', holder: 'NOMILY DANIELY', isDefault: false },
   ]);
 
-  // פונקציה להגדרת כרטיס כברירת מחדל (דרישת PRD סעיף 472)
   const handleSetDefault = (id: string) => {
       const updatedCards = cards.map(card => ({
           ...card,
-          isDefault: card.id === id // רק הכרטיס שנבחר יהיה אמת, השאר שקר
+          isDefault: card.id === id 
       }));
       setCards(updatedCards);
   };
@@ -31,14 +29,13 @@ export default function PaymentMethodsScreen() {
 
   const handleAddCard = () => {
       setModalVisible(false);
-      // יצירת כרטיס חדש (סימולציה)
       const newCard = { 
           id: Math.random().toString(), 
           type: Math.random() > 0.5 ? 'visa' : 'mastercard', 
           last4: Math.floor(1000 + Math.random() * 9000).toString(), 
           exp: '01/28', 
           holder: 'NOMILY DANIELY',
-          isDefault: cards.length === 0 // אם זה הכרטיס הראשון, הוא אוטומטית ברירת מחדל
+          isDefault: cards.length === 0 
       };
       setCards([...cards, newCard]);
       Alert.alert("Success", "Card added securely via Tranzilla.");
@@ -53,7 +50,6 @@ export default function PaymentMethodsScreen() {
         <View style={styles.cardHeader}>
             <FontAwesome5 name={item.type === 'visa' ? "cc-visa" : "cc-mastercard"} size={30} color="#fff" />
             
-            {/* כפתור מחיקה */}
             <TouchableOpacity onPress={() => handleDelete(item.id)} style={{padding: 5}}>
                 <Ionicons name="trash-outline" size={20} color="rgba(255,255,255,0.7)" />
             </TouchableOpacity>
@@ -72,7 +68,6 @@ export default function PaymentMethodsScreen() {
             </View>
         </View>
 
-        {/* אינדיקציה לכרטיס ברירת מחדל - דרישת PRD */}
         {item.isDefault ? (
             <View style={styles.defaultBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#E91E63" />
@@ -114,7 +109,6 @@ export default function PaymentMethodsScreen() {
           <Text style={styles.addButtonText}>Add New Card</Text>
       </TouchableOpacity>
 
-      {/* מודל להוספת כרטיס */}
       <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
               <View style={styles.modalContent}>
@@ -168,7 +162,6 @@ const styles = StyleSheet.create({
   cardLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 10, textTransform: 'uppercase', marginBottom: 2 },
   cardValue: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
 
-  // תגית Default
   defaultBadge: { 
       position: 'absolute', top: 15, right: 50, 
       backgroundColor: '#fff', paddingHorizontal: 8, paddingVertical: 4, 
@@ -186,7 +179,6 @@ const styles = StyleSheet.create({
   addButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999' },
 
-  // מודל
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: '#fff', padding: 25, borderRadius: 20, elevation: 10 },
   modalHeader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 5 },

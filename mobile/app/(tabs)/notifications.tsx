@@ -5,12 +5,11 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-// נתונים התחלתיים
 const initialNotifications = [
   {
     id: '1',
     type: 'success', 
-    title: 'Group Completed! 🎉',
+    title: 'Group Completed! ',
     message: 'The Sony Headphones group reached its target! Tap to pay the remainder.',
     time: '2 hours ago',
     read: false,
@@ -48,7 +47,7 @@ const initialNotifications = [
   {
     id: '5',
     type: 'system',
-    title: 'Welcome to BuyForce 👋',
+    title: 'Welcome to BuyForce ',
     message: 'Thanks for joining! Start your first group purchase today and save big.',
     time: '1 week ago',
     read: true,
@@ -60,7 +59,6 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const [notifications, setNotifications] = useState(initialNotifications);
   
-  // --- ניהול מצב בחירה (Selection Mode) ---
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const isSelectionMode = selectedIds.length > 0;
 
@@ -86,18 +84,15 @@ export default function NotificationsScreen() {
     }
   };
 
-  // --- לוגיקה ללחיצה ארוכה (כניסה למצב בחירה) ---
   const handleLongPress = (id: string) => {
-    Vibration.vibrate(50); // רטט קטן למשוב
+    Vibration.vibrate(50); 
     if (!selectedIds.includes(id)) {
         setSelectedIds([...selectedIds, id]);
     }
   };
 
-  // --- לוגיקה ללחיצה רגילה ---
   const handlePress = (item: any) => {
     if (isSelectionMode) {
-        // אם אנחנו במצב בחירה - הלחיצה רק מסמנת/מבטלת סימון
         if (selectedIds.includes(item.id)) {
             const newIds = selectedIds.filter(id => id !== item.id);
             setSelectedIds(newIds);
@@ -105,7 +100,6 @@ export default function NotificationsScreen() {
             setSelectedIds([...selectedIds, item.id]);
         }
     } else {
-        // מצב רגיל - פתיחת ההודעה
         const updatedList = notifications.map(n => 
             n.id === item.id ? { ...n, read: true } : n
         );
@@ -120,7 +114,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  // מחיקת הפריטים שנבחרו
+  
   const deleteSelected = () => {
     Alert.alert(
         "Delete Notifications",
@@ -133,7 +127,7 @@ export default function NotificationsScreen() {
                 onPress: () => {
                     const filtered = notifications.filter(n => !selectedIds.includes(n.id));
                     setNotifications(filtered);
-                    setSelectedIds([]); // יציאה ממצב בחירה
+                    setSelectedIds([]); 
                 }
             }
         ]
@@ -160,10 +154,9 @@ export default function NotificationsScreen() {
             style={[
                 styles.card, 
                 !item.read && !isSelectionMode && styles.unreadCard,
-                isSelected && styles.selectedCard // עיצוב מיוחד אם נבחר
+                isSelected && styles.selectedCard 
             ]}
         >
-          {/* אייקון סימון (מופיע רק במצב בחירה) */}
           {isSelectionMode && (
               <View style={styles.selectionIcon}>
                   <Ionicons 
@@ -196,11 +189,9 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* --- Header דינמי --- */}
       <View style={[styles.header, isSelectionMode && styles.selectionHeader]}>
         
         {isSelectionMode ? (
-            // מצב בחירה
             <>
                 <TouchableOpacity onPress={cancelSelection}>
                     <Ionicons name="close" size={26} color="#333" />
@@ -249,7 +240,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee'
   },
   selectionHeader: {
-      backgroundColor: '#FFE0E9', // צבע רקע עדין במצב בחירה
+      backgroundColor: '#FFE0E9', 
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
   selectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
@@ -267,7 +258,7 @@ const styles = StyleSheet.create({
       borderLeftColor: '#E91E63' 
   },
   selectedCard: {
-      backgroundColor: '#FFF0F5', // ורוד בהיר מאוד כשנבחר
+      backgroundColor: '#FFF0F5', 
       borderColor: '#E91E63',
       borderWidth: 1
   },

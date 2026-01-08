@@ -71,7 +71,6 @@ export default function RegisterScreen() {
       return;
     }
 
-    // 👇 בדיקה חדשה: האם יש שטרודל באימייל?
     if (!email.includes('@')) {
         if (Platform.OS === 'web') window.alert('Invalid Email: You are missing the "@" symbol.');
         else Alert.alert('Error', 'Invalid Email: You are missing the "@" symbol.');

@@ -9,7 +9,6 @@ import { auth, db } from '../../firebaseConfig';
 import { signOut, updateProfile } from 'firebase/auth'; 
 import { collection, getDocs, query, where, writeBatch, doc, updateDoc } from 'firebase/firestore';
 
-// --- מילון תרגומים (עברית / אנגלית) ---
 const translations = {
   en: {
     verified: "Verified Member",
@@ -22,7 +21,6 @@ const translations = {
     adminZone: "ADMIN ZONE (DEMO ONLY)",
     runChecks: "Run Daily System Checks 🔄",
     adminDesc: "Closes expired groups, refunds users, and triggers emails.",
-    // Modal
     modalTitle: "App Settings",
     langSection: "Language / שפה",
     pushTitle: "Push Notifications",
@@ -32,7 +30,6 @@ const translations = {
     faceIdTitle: "Face ID / Biometric",
     faceIdSub: "Secure quick login",
     saveChanges: "Save Changes",
-    // Name Edit
     editNameTitle: "Edit Name",
     enterName: "Enter full name",
     cancel: "Cancel",
@@ -49,7 +46,6 @@ const translations = {
     adminZone: "אזור ניהול (דמו)",
     runChecks: "הרץ בדיקות מערכת 🔄",
     adminDesc: "סגירת קבוצות, ביצוע זיכויים ושליחת הודעות.",
-    // Modal
     modalTitle: "הגדרות",
     langSection: "שפה / Language",
     pushTitle: "התראות דחיפה",
@@ -59,7 +55,6 @@ const translations = {
     faceIdTitle: "זיהוי פנים / ביומטרי",
     faceIdSub: "כניסה מהירה ומאובטחת",
     saveChanges: "שמור שינויים",
-    // Name Edit
     editNameTitle: "עריכת שם",
     enterName: "הכנס שם מלא",
     cancel: "ביטול",
@@ -71,14 +66,12 @@ export default function ProfileScreen() {
   const router = useRouter();
   const user = auth.currentUser;
 
-  // --- משתנים לניהול המשתמש והתצוגה ---
   const [userData, setUserData] = useState({
     displayName: user?.displayName || 'BuyForce User',
     email: user?.email || 'user@example.com',
     photoURL: user?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
   });
 
-  // --- משתנים לעריכת שם ---
   const [isNameModalVisible, setNameModalVisible] = useState(false);
   const [newFullName, setNewFullName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
@@ -93,10 +86,8 @@ export default function ProfileScreen() {
   
   const [adminLoading, setAdminLoading] = useState(false);
 
-  // שימוש בטקסטים לפי השפה הנבחרת
   const t = translations[appLanguage];
 
-  // --- לוגיקה ליציאה מהחשבון ---
   const handleLogout = async () => {
     const performLogout = async () => {
         try {
@@ -123,7 +114,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // --- לוגיקה לעריכת שם ---
   const openNameEdit = () => {
     setNewFullName(userData.displayName);
     setNameModalVisible(true);
@@ -149,20 +139,17 @@ export default function ProfileScreen() {
     }
   };
 
-  // --- לוגיקה לשמירת הגדרות ---
   const saveSettings = () => {
       setSaving(true);
       setTimeout(() => {
           setSaving(false);
           setModalVisible(false);
-          // כאן השפה "נתפסת" והמסך יתעדכן כי ה-State השתנה
           const msg = appLanguage === 'he' ? "הגדרות נשמרו בהצלחה" : "Settings Saved";
           if (Platform.OS === 'web') alert(msg);
           else Alert.alert("Success", msg);
       }, 800);
   };
 
-  // --- לוגיקה של כפתור המנהל (שרת) ---
   const runAdminChecks = async () => {
     setAdminLoading(true);
     try {
@@ -223,7 +210,6 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* Header - User Info */}
         <View style={styles.header}>
             <View style={styles.avatarContainer}>
                 <Image source={{ uri: userData.photoURL }} style={styles.avatar} />
@@ -238,7 +224,6 @@ export default function ProfileScreen() {
             </View>
         </View>
 
-        {/* Menu Section */}
         <View style={styles.section}>
             <Text style={[styles.sectionTitle, appLanguage === 'he' && {textAlign: 'right'}]}>{t.preferences}</Text>
             
@@ -280,7 +265,6 @@ export default function ProfileScreen() {
             <Text style={styles.logoutText}>{t.logOut}</Text>
         </TouchableOpacity>
 
-        {/* Admin Zone */}
         <View style={styles.adminSection}>
             <Text style={styles.adminTitle}>{t.adminZone}</Text>
             <TouchableOpacity 
@@ -299,7 +283,6 @@ export default function ProfileScreen() {
 
       </ScrollView>
 
-      {/* --- חלון עריכת שם (Modal) --- */}
       <Modal
         visible={isNameModalVisible}
         transparent={true}
@@ -327,7 +310,6 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* --- חלון הגדרות (Modal) --- */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -390,7 +372,6 @@ export default function ProfileScreen() {
                     />
                 </View>
 
-                {/* 👇 הוספנו בחזרה את זיהוי הפנים! 👇 */}
                 <View style={[styles.settingRow, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
                     <View style={appLanguage === 'he' && {alignItems: 'flex-end'}}>
                         <Text style={styles.settingLabel}>{t.faceIdTitle}</Text>
@@ -456,7 +437,6 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: '#D32F2F', fontWeight: 'bold', fontSize: 16 },
 
-  // Admin Section Styles
   adminSection: { marginTop: 40, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 20 },
   adminTitle: { fontSize: 12, color: '#999', fontWeight: 'bold', marginBottom: 10, textTransform: 'uppercase' },
   adminButton: { 
@@ -466,7 +446,6 @@ const styles = StyleSheet.create({
   adminButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   adminDesc: { color: '#999', fontSize: 10, marginTop: 8, fontStyle: 'italic', textAlign: 'center' },
 
-  // Modal Styles
   modalOverlay: {
       flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end'
   },
@@ -488,7 +467,6 @@ const styles = StyleSheet.create({
   },
   saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
-  // New Styles
   input: {
     borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12,
     marginBottom: 20, fontSize: 16, backgroundColor: '#FAFAFA'
@@ -504,7 +482,6 @@ const styles = StyleSheet.create({
   },
   buttonText: { fontWeight: 'bold', fontSize: 16 },
   
-  // Language Styles
   sectionHeader: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 10 },
   row: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   langButton: {
