@@ -1,7 +1,15 @@
 // firebaseConfig.js
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'; // 1. הוספנו את השורה הזו
+// 1. Auth - אימות משתמשים
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+// 2. Firestore - מסד נתונים
+import { getFirestore } from 'firebase/firestore';
+// 3. Storage - שמירת תמונות (מוצרים/פרופיל)
+import { getStorage } from 'firebase/storage';
+// 4. Analytics - דרישת PRD (סטטיסטיקות)
+import { getAnalytics, isSupported } from 'firebase/analytics';
+// 5. AsyncStorage - לשמירת חיבור משתמש גם כשסוגרים את האפליקציה
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAhL2kkTcznt-oePuQRfaa8t6vMtbmSOp8",
@@ -16,8 +24,21 @@ const firebaseConfig = {
 // אתחול האפליקציה
 const app = initializeApp(firebaseConfig);
 
-// ייצוא שירות האימות
-export const auth = getAuth(app);
+// --- אתחול שירותים ---
 
-// 2. הוספנו את השורה הזו - זה מה שהיה חסר לך!
+// 1. Auth עם שמירה מקומית (כדי שהמשתמש לא יתנתק כל פעם שיוצאים מהאפליקציה)
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
+
+// 2. Database
 export const db = getFirestore(app);
+
+// 3. Storage (בשביל תמונות פרופיל ותמונות מוצרים)
+export const storage = getStorage(app);
+
+// 4. Analytics (רץ רק אם הסביבה תומכת בזה, למניעת קריסות)
+// זה עונה על הדרישה ב-PRD: "Firebase Analytics -> user events"
+export const analytics = isSupported().then((yes) => yes ? getAnalytics(app) : null);
+
+export default app;

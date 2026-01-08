@@ -53,7 +53,7 @@ export default function CatalogScreen() {
     return () => unsubscribe();
   }, []);
 
-  // --- לוגיקת הסינון החכמה (קטגוריה קודם, ואז מדורים) ---
+  // --- לוגיקת הסינון החכמה ---
 
   const productsByCategory = selectedCategory === 'All' 
     ? products 
@@ -77,7 +77,7 @@ export default function CatalogScreen() {
 
   const newArrivals = [...productsByCategory].reverse().slice(0, 5);
 
-  // סינון עבור החיפוש (רץ על כל המוצרים כדי לא להגביל לקטגוריה בזמן חיפוש)
+  // סינון עבור החיפוש
   const filteredProducts = products.filter(product => {
     const title = (product.title || product.name || '').toLowerCase();
     const q = searchQuery.toLowerCase();
@@ -101,7 +101,9 @@ export default function CatalogScreen() {
             currency: 'ILS', 
             productName: product.title || product.name,
             productId: String(product.id),
-            productImage: product.imageUrl || product.image || ''
+            productImage: product.imageUrl || product.image || '',
+            regularPrice: String(product.regularPrice || product.price),
+            groupPrice: String(product.groupPrice)
           }
       });
   };
@@ -114,6 +116,10 @@ export default function CatalogScreen() {
     const isFull = current >= target;
     const isJoined = userOrders.includes(item.id);
 
+    const regPrice = parseFloat(item.regularPrice || item.price || '0');
+    const grpPrice = parseFloat(item.groupPrice || '0');
+    const discountPercent = regPrice > 0 ? Math.round(((regPrice - grpPrice) / regPrice) * 100) : 0;
+
     const imgLink = item.imageUrl || item.image || 'https://dummyimage.com/400x400/ccc/000.png';
     const title = item.title || item.name;
 
@@ -121,7 +127,7 @@ export default function CatalogScreen() {
       <TouchableOpacity 
         activeOpacity={0.9}
         onPress={() => {
-            setIsSearchVisible(false); // סוגר את החיפוש אם לחצו משם
+            setIsSearchVisible(false);
             router.push({
                 pathname: '/product-details',
                 params: {
@@ -143,9 +149,22 @@ export default function CatalogScreen() {
             horizontal ? { width: 220, marginRight: 15 } : (isDesktop ? { flex: 1, margin: 10, maxWidth: '31%' } : { marginBottom: 20 })
         ]}
       >
-        <View style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: 20 }}>
+        <View style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 20, padding: 2 }}>
             <HeartButton product={item} />
         </View>
+
+        {discountPercent > 10 && (
+            <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>{discountPercent}% OFF</Text>
+            </View>
+        )}
+
+        {progress > 0.8 && !isFull && (
+             <View style={styles.hotBadge}>
+                <Ionicons name="flame" size={14} color="#fff" />
+                <Text style={styles.hotText}>HOT</Text>
+            </View>
+        )}
 
         <Image source={{ uri: imgLink }} style={[styles.image, horizontal && { height: 140 }]} resizeMode="cover" />
         
@@ -257,12 +276,23 @@ export default function CatalogScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 👇👇👇 ההדר החדש עם כפתור המתנה 👇👇👇 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>BuyForce</Text>
-        <TouchableOpacity onPress={() => setIsSearchVisible(true)} style={styles.searchIconBtn}>
-            <Ionicons name="search" size={26} color="#333" />
-        </TouchableOpacity>
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+            {/* כפתור למודל */}
+            <TouchableOpacity onPress={() => router.push('/modal')}>
+                <Ionicons name="gift-outline" size={24} color="#E91E63" />
+            </TouchableOpacity>
+
+            {/* כפתור חיפוש */}
+            <TouchableOpacity onPress={() => setIsSearchVisible(true)} style={styles.searchIconBtn}>
+                <Ionicons name="search" size={26} color="#333" />
+            </TouchableOpacity>
+        </View>
       </View>
+      {/* 👆👆👆 סוף ההדר החדש 👆👆👆 */}
 
       <FlatList
         ListHeaderComponent={MainHeader}
@@ -273,9 +303,14 @@ export default function CatalogScreen() {
         renderItem={({ item }) => renderProductCard({ item, horizontal: false })}
         contentContainerStyle={{ paddingBottom: 50 }}
         columnWrapperStyle={isDesktop ? { justifyContent: 'flex-start', paddingHorizontal: 15 } : undefined}
+        ListEmptyComponent={
+            <View style={{alignItems: 'center', marginTop: 50}}>
+                <Text style={{color: 'gray'}}>No products found in this category.</Text>
+            </View>
+        }
       />
       
-      {/* 👇👇👇 מסך החיפוש המעודכן 👇👇👇 */}
+      {/* מסך החיפוש */}
       <Modal visible={isSearchVisible} animationType="slide" onRequestClose={() => setIsSearchVisible(false)}>
         <SafeAreaView style={styles.modalContainer}>
               <View style={styles.searchHeader}>
@@ -291,10 +326,8 @@ export default function CatalogScreen() {
                 />
               </View>
 
-              {/* אם שורת החיפוש ריקה - מציגים המלצות */}
               {searchQuery.trim() === '' ? (
                   <ScrollView style={styles.suggestionsContainer} keyboardShouldPersistTaps="always">
-                      {/* Trending */}
                       <Text style={styles.suggestionTitle}>Trending Searches 🔥</Text>
                       <View style={styles.chipsContainer}>
                           {trendingSearches.map((term, index) => (
@@ -308,7 +341,6 @@ export default function CatalogScreen() {
                           ))}
                       </View>
 
-                      {/* Recent */}
                       <Text style={styles.suggestionTitle}>Recent Searches 🕒</Text>
                       <View>
                           {recentSearches.map((term, index) => (
@@ -325,7 +357,6 @@ export default function CatalogScreen() {
                       </View>
                   </ScrollView>
               ) : (
-                  /* אם יש טקסט - מציגים תוצאות */
                   <FlatList
                     data={filteredProducts}
                     keyExtractor={(item) => item.id} 
@@ -372,7 +403,18 @@ const styles = StyleSheet.create({
   disabledButton: { backgroundColor: '#B0BEC5' }, 
   joinButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   
-  // סגנונות חדשים לחיפוש
+  discountBadge: {
+      position: 'absolute', top: 10, left: 10, zIndex: 10,
+      backgroundColor: '#E91E63', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5
+  },
+  discountText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  hotBadge: {
+      position: 'absolute', top: 10, left: 90, zIndex: 10, 
+      backgroundColor: '#FF9800', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5,
+      flexDirection: 'row', alignItems: 'center', gap: 3
+  },
+  hotText: { color: '#fff', fontWeight: 'bold', fontSize: 10 },
+
   modalContainer: { flex: 1, backgroundColor: '#f5f5f5' },
   searchHeader: { padding: 20, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', elevation: 2 },
   searchInput: { flex: 1, borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 5, marginLeft: 10, textAlign: 'left' },

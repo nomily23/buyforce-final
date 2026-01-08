@@ -39,6 +39,12 @@ export default function ProductDetailsScreen() {
   const progress = target > 0 ? dynamicCurrent / target : 0;
   const progressPercent = `${Math.min(progress * 100, 100)}%`;
 
+  // --- תוספת חדשה: חישוב אחוזי הנחה ---
+  const regularP = parseFloat(price as string || '0');
+  const groupP = parseFloat(groupPrice as string || '0');
+  const discountPercent = regularP > 0 ? Math.round(((regularP - groupP) / regularP) * 100) : 0;
+  // -------------------------------------
+
   const [isJoined, setIsJoined] = useState(false);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState('');
@@ -118,7 +124,6 @@ export default function ProductDetailsScreen() {
         return;
     }
 
-    // בדיקת אבטחה כפולה: קריאה אחרונה לשרת לוודא שיש מקום
     try {
         const productRef = doc(db, 'products', String(id));
         const snapshot = await getDoc(productRef);
@@ -163,14 +168,25 @@ export default function ProductDetailsScreen() {
               <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
           ),
+          // --- תוספת חדשה: כפתור הלב וכפתור השיתוף ---
           headerRight: () => (
-            <TouchableOpacity 
-              onPress={handleShare} 
-              style={styles.headerButton}
-            >
-              <Ionicons name="share-social-outline" size={24} color="#333" />
-            </TouchableOpacity>
+            <View style={{flexDirection: 'row', gap: 10}}>
+                <TouchableOpacity 
+                  style={styles.headerButton} 
+                  onPress={() => Alert.alert("Saved", "Added to wishlist!")}
+                >
+                  <Ionicons name="heart-outline" size={24} color="#E91E63" />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={handleShare} 
+                  style={styles.headerButton}
+                >
+                  <Ionicons name="share-social-outline" size={24} color="#333" />
+                </TouchableOpacity>
+            </View>
           ),
+          // ------------------------------------------
         }} 
       />
 
@@ -185,7 +201,6 @@ export default function ProductDetailsScreen() {
                 <Text style={styles.supplierText}>Sold by: {supplierName}</Text>
 
                 <View style={styles.statusRow}>
-                    {/* תגית הסטטוס משתנה לאדום כשהקבוצה מלאה */}
                     <View style={[styles.statusBadge, isFull && styles.fullBadge]}>
                         <Text style={[styles.statusText, isFull && styles.fullText]}>
                             {isFull ? 'SOLD OUT 🔒' : 'Active Group 🔥'}
@@ -197,14 +212,27 @@ export default function ProductDetailsScreen() {
                     </View>
                 </View>
 
+                {/* --- תוספת חדשה: אזור המחיר המעודכן עם תגית ההנחה --- */}
                 <View style={styles.priceContainer}>
-                    <Text style={styles.groupPriceLabel}>Group Price:</Text>
-                    <Text style={styles.groupPrice}>₪{groupPrice}</Text>
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                        <View>
+                            <Text style={styles.groupPriceLabel}>Group Price:</Text>
+                            <Text style={styles.groupPrice}>₪{groupPrice}</Text>
+                        </View>
+                        
+                        {discountPercent > 0 && (
+                            <View style={styles.discountBadge}>
+                                <Text style={styles.discountText}>SAVE {discountPercent}%</Text>
+                            </View>
+                        )}
+                    </View>
+
                     <View style={styles.regularPriceWrapper}>
                         <Text style={styles.regularPriceLabel}>Regular Price:</Text>
                         <Text style={styles.regularPrice}>₪{price}</Text>
                     </View>
                 </View>
+                {/* -------------------------------------------------- */}
 
                 <View style={styles.divider} />
 
@@ -214,7 +242,6 @@ export default function ProductDetailsScreen() {
                         <Text style={styles.progressValue}>{dynamicCurrent} / {target}</Text>
                     </View>
                     <View style={styles.progressBarBg}>
-                        {/* הבר הופך לאדום כשהוא מלא */}
                         <View style={[
                             styles.progressBarFill, 
                             { width: progressPercent as any },
@@ -243,7 +270,6 @@ export default function ProductDetailsScreen() {
                   <Text style={styles.footerSub}>Group Price</Text>
               </View>
 
-              {/* הכפתור הופך לאפור ולא לחיץ אם הקבוצה מלאה */}
               <TouchableOpacity 
                 style={[styles.joinButton, (isFull || isJoined) && styles.disabledButton]}
                 onPress={handleJoin}
@@ -288,9 +314,9 @@ const styles = StyleSheet.create({
 
   statusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' },
   statusBadge: { backgroundColor: '#e3f2fd', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginRight: 10 },
-  fullBadge: { backgroundColor: '#ffebee' }, // רקע אדום בהיר
+  fullBadge: { backgroundColor: '#ffebee' }, 
   statusText: { color: '#1565c0', fontWeight: 'bold', fontSize: 14 },
-  fullText: { color: '#d32f2f' }, // טקסט אדום
+  fullText: { color: '#d32f2f' }, 
 
   timerBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff0f5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   timerText: { color: '#E91E63', fontWeight: 'bold', fontSize: 14 },
@@ -329,6 +355,21 @@ const styles = StyleSheet.create({
   joinButton: { 
       backgroundColor: '#E91E63', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 30, elevation: 2 
   },
-  disabledButton: { backgroundColor: '#ccc' }, // צבע אפור כשהכפתור לא פעיל
-  joinButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' }
+  disabledButton: { backgroundColor: '#ccc' }, 
+  joinButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+
+  // --- תוספת: סטיילים חדשים לתגית ההנחה ---
+  discountBadge: {
+    backgroundColor: '#E91E63',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 4,
+    transform: [{ rotate: '-2deg' }] 
+  },
+  discountText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14
+  }
+  // ---------------------------------------
 });

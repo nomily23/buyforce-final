@@ -1,31 +1,69 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
-import { useRouter, Stack } from 'expo-router'; // <--- הוספנו את Stack
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, Platform, LayoutAnimation, UIManager } from 'react-native';
+import { useRouter, Stack } from 'expo-router';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
+
+// הפעלת אנימציה באנדרואיד
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// נתוני השאלות והתשובות
+const faqData = [
+  {
+    id: 1,
+    question: "🛍️ How do group buys work?",
+    answer: "You join a group by paying a small deposit (usually ₪1). Once the group reaches the target number of buyers, the deal is unlocked! You then pay the remaining balance, and the product is shipped."
+  },
+  {
+    id: 2,
+    question: "💰 What if the group isn't completed?",
+    answer: "No worries! We have a 100% Money-Back Guarantee. If a group fails to reach the target within the time limit, your deposit is automatically refunded to your original payment method."
+  },
+  {
+    id: 3,
+    question: "🚚 Shipping & Delivery",
+    answer: "After the group is completed and you pay the balance, the supplier processes your order. Shipping usually takes 3-7 business days. You will receive a tracking number via email."
+  },
+  {
+    id: 4,
+    question: "🔒 Is my payment secure?",
+    answer: "Yes. We use industry-standard SSL encryption and secure payment gateways (like PayPal and Credit Cards) to ensure your financial data is never exposed."
+  },
+  {
+    id: 5,
+    question: "undo Return Policy",
+    answer: "You can return any product within 14 days of receipt, provided it is in its original packaging. Contact support to initiate a return."
+  }
+];
 
 export default function HelpScreen() {
   const router = useRouter();
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const toggleExpand = (id: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedId(expandedId === id ? null : id); // סגור אם פתוח, פתח אם סגור
+  };
 
   const handleContactSupport = () => {
-    const email = 'support@buygroup.com'; 
+    const email = 'support@buyforce.com'; 
     const subject = 'Help Request';
     const url = `mailto:${email}?subject=${subject}`;
+    Linking.openURL(url).catch(() => alert('Cannot open email client'));
+  };
 
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        alert('Cannot open email client');
-      }
-    });
+  const handleWhatsApp = () => {
+      // דמו לפתיחת וואטסאפ
+      const url = "https://wa.me/972500000000"; 
+      Linking.openURL(url).catch(() => alert('Cannot open WhatsApp'));
   };
 
   return (
     <View style={styles.container}>
-      {/* 👇👇👇 השורה הזו מעלימה את הכותרת המכוערת עם ה-tabs */}
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Custom Header - הכותרת היפה שבנינו */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -35,50 +73,57 @@ export default function HelpScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* Contact Section */}
+        {/* Contact Buttons */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Need help?</Text>
           <Text style={styles.cardText}>
-            Our support team is here for you. If you have issues with an order or payment, please contact us.
+            Our team is available Sunday-Thursday, 9:00-18:00.
           </Text>
-          <TouchableOpacity style={styles.contactButton} onPress={handleContactSupport}>
-            <Ionicons name="mail-outline" size={20} color="#fff" style={{marginRight: 8}} />
-            <Text style={styles.contactButtonText}>Contact Support</Text>
-          </TouchableOpacity>
+          
+          <View style={styles.contactRow}>
+              <TouchableOpacity style={[styles.contactButton, {backgroundColor: '#E91E63'}]} onPress={handleContactSupport}>
+                <Ionicons name="mail-outline" size={20} color="#fff" style={{marginRight: 8}} />
+                <Text style={styles.contactButtonText}>Email Us</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.contactButton, {backgroundColor: '#25D366'}]} onPress={handleWhatsApp}>
+                <FontAwesome name="whatsapp" size={20} color="#fff" style={{marginRight: 8}} />
+                <Text style={styles.contactButtonText}>Chat</Text>
+              </TouchableOpacity>
+          </View>
         </View>
 
-        {/* FAQ Section */}
+        {/* FAQ Section - Accordion */}
         <Text style={styles.sectionHeader}>Frequently Asked Questions</Text>
 
-        <View style={styles.faqItem}>
-          <Text style={styles.question}>🛍️ How do group buys work?</Text>
-          <Text style={styles.answer}>
-            You join a group by paying a small deposit. Once the group reaches the target number of buyers, the deal is unlocked! You then pay the remaining balance, and the product is shipped to you.
-          </Text>
-        </View>
+        {faqData.map((item) => {
+            const isExpanded = expandedId === item.id;
+            return (
+                <TouchableOpacity 
+                    key={item.id} 
+                    style={[styles.faqItem, isExpanded && styles.faqItemExpanded]} 
+                    onPress={() => toggleExpand(item.id)}
+                    activeOpacity={0.8}
+                >
+                    <View style={styles.questionRow}>
+                        <Text style={styles.question}>{item.question}</Text>
+                        <Ionicons 
+                            name={isExpanded ? "chevron-up" : "chevron-down"} 
+                            size={20} 
+                            color="#999" 
+                        />
+                    </View>
+                    {isExpanded && (
+                        <Text style={styles.answer}>{item.answer}</Text>
+                    )}
+                </TouchableOpacity>
+            );
+        })}
 
-        <View style={styles.faqItem}>
-          <Text style={styles.question}>💰 What if the group isn't completed?</Text>
-          <Text style={styles.answer}>
-            No worries! If a group fails to reach the target within the time limit, your deposit will be fully refunded to your account automatically.
-          </Text>
+        <View style={styles.footer}>
+            <Text style={styles.versionText}>BuyForce App Version 1.0.2</Text>
+            <Text style={styles.footerLink}>Terms of Service | Privacy Policy</Text>
         </View>
-
-        <View style={styles.faqItem}>
-          <Text style={styles.question}>🚚 When will I receive my product?</Text>
-          <Text style={styles.answer}>
-            After the group is completed and you pay the remaining balance, the supplier will process your order. Shipping usually takes 3-7 business days depending on your location.
-          </Text>
-        </View>
-
-        <View style={styles.faqItem}>
-          <Text style={styles.question}>🔒 Is my payment secure?</Text>
-          <Text style={styles.answer}>
-            Yes. We use secure payment gateways to process all transactions. Your financial data is encrypted and safe.
-          </Text>
-        </View>
-
-        <Text style={styles.versionText}>App Version 1.0.0</Text>
 
       </ScrollView>
     </View>
@@ -88,31 +133,47 @@ export default function HelpScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9f9f9' },
   header: { 
-    flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 60, // גובה מותאם לסטטוס בר
+    flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 60, 
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' 
   },
   backButton: { padding: 5, marginRight: 10 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
   
-  content: { padding: 20 },
+  content: { padding: 20, paddingBottom: 50 },
   
   card: { 
     backgroundColor: '#fff', borderRadius: 12, padding: 20, marginBottom: 25, 
     elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5 
   },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8, color: '#333' },
-  cardText: { fontSize: 14, color: '#666', marginBottom: 15, lineHeight: 20 },
-  contactButton: { 
-    backgroundColor: '#E91E63', flexDirection: 'row', alignItems: 'center', 
-    justifyContent: 'center', padding: 12, borderRadius: 8 
-  },
-  contactButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-
-  sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 15, marginLeft: 5 },
+  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: '#333' },
+  cardText: { fontSize: 14, color: '#666', marginBottom: 15 },
   
-  faqItem: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#eee' },
-  question: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 8 },
-  answer: { fontSize: 14, color: '#666', lineHeight: 20 },
+  contactRow: { flexDirection: 'row', gap: 10 },
+  contactButton: { 
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', 
+    padding: 12, borderRadius: 8 
+  },
+  contactButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
 
-  versionText: { textAlign: 'center', color: '#999', fontSize: 12, marginTop: 20, marginBottom: 40 }
+  sectionHeader: { fontSize: 16, fontWeight: 'bold', color: '#666', marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1 },
+  
+  faqItem: { 
+      backgroundColor: '#fff', borderRadius: 10, marginBottom: 10, 
+      borderWidth: 1, borderColor: '#eee', overflow: 'hidden' 
+  },
+  faqItemExpanded: { borderColor: '#E91E63', backgroundColor: '#FFF0F5' }, // צבע רקע עדין כשפתוח
+  
+  questionRow: { 
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', 
+      padding: 15 
+  },
+  question: { fontSize: 15, fontWeight: 'bold', color: '#333', flex: 1 },
+  answer: { 
+      fontSize: 14, color: '#555', lineHeight: 22, 
+      paddingHorizontal: 15, paddingBottom: 15 
+  },
+
+  footer: { alignItems: 'center', marginTop: 30 },
+  versionText: { color: '#ccc', fontSize: 12 },
+  footerLink: { color: '#E91E63', fontSize: 12, marginTop: 5, textDecorationLine: 'underline' }
 });

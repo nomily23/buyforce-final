@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, Pressable, Image, 
-  Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions, SafeAreaView, Modal
+  Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, useWindowDimensions, SafeAreaView, Modal, TouchableOpacity 
 } from 'react-native';
-// 👇 התיקון כאן: הוספתי את Stack לרשימת הייבוא
 import { useRouter, Stack } from 'expo-router';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import * as LocalAuthentication from 'expo-local-authentication'; // ספריית ביומטרי
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,10 +25,13 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   
-  // משתנים לחלון "שכחתי סיסמה"
+  // משתנים לשחזור סיסמה
   const [resetModalVisible, setResetModalVisible] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+
+  // משתנים לביומטרי
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
 
   const [failedAttempts, setFailedAttempts] = useState(0);
 
@@ -44,6 +47,20 @@ export default function LoginScreen() {
     redirectUri: redirectUri, 
   });
 
+  // בדיקת תמיכה ביומטרית בטעינת הדף
+  useEffect(() => {
+    (async () => {
+      try {
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        // הכפתור יופיע רק אם יש חומרה וגם מוגדרות פנים/אצבע
+        setIsBiometricSupported(compatible && enrolled);
+      } catch (e) {
+        console.log("Biometric check error:", e);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     if (response?.type === 'success') {
       const { id_token } = response.params;
@@ -57,6 +74,44 @@ export default function LoginScreen() {
         });
     }
   }, [response]);
+
+  // --- פונקציית התחברות ביומטרית (המתוקנת) ---
+  const handleBiometricLogin = async () => {
+      console.log("Starting biometric login...");
+      
+      try {
+          // בדיקה כפולה שיש הגדרות בטלפון
+          const hasHardware = await LocalAuthentication.hasHardwareAsync();
+          const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+          if (!hasHardware || !isEnrolled) {
+              Alert.alert("Error", "Face ID / Touch ID is not set up on this device.");
+              return;
+          }
+
+          const result = await LocalAuthentication.authenticateAsync({
+              promptMessage: 'Login with Face ID',
+              fallbackLabel: '',   // טריק: משאירים ריק כדי לא להציג כפתור סיסמה
+              disableDeviceFallback: true, // חובה: חוסם את המעבר לקוד הטלפון
+              cancelLabel: 'Cancel'
+          });
+
+          if (result.success) {
+              setLoading(true);
+              // דיליי קטן לאפקט טעינה
+              setTimeout(() => {
+                  setLoading(false);
+                  Alert.alert("Success", "Welcome back! 🔓", [
+                      { text: "Enter App", onPress: () => router.replace('/(tabs)/home') }
+                  ]);
+              }, 500);
+          }
+      } catch (error: any) {
+          console.log("Biometric error:", error);
+          // לא מקפיצים שגיאה למשתמש על כל ביטול, רק רושמים בלוג
+      }
+  };
+  // ---------------------------------------------
 
   const handleLogin = async () => {
     if (failedAttempts >= 5) {
@@ -103,7 +158,6 @@ export default function LoginScreen() {
       setResetLoading(true);
       try {
           await sendPasswordResetEmail(auth, resetEmail);
-          
           setResetModalVisible(false); 
           setResetEmail(''); 
           
@@ -190,6 +244,14 @@ export default function LoginScreen() {
             >
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Sign In</Text>}
             </Pressable>
+            
+            {/* 👇 כפתור ביומטרי (יופיע רק אם נתמך במכשיר) */}
+            {isBiometricSupported && (
+                <TouchableOpacity style={styles.biometricButton} onPress={handleBiometricLogin}>
+                    <Ionicons name="finger-print-outline" size={28} color="#E91E63" />
+                    <Text style={styles.biometricText}>Login with Face ID</Text>
+                </TouchableOpacity>
+            )}
 
             <View style={styles.socialRow}>
                 <Pressable 
@@ -223,6 +285,13 @@ export default function LoginScreen() {
                     <Text style={styles.signupButton}>Sign Up</Text>
                 </Pressable>
             </View>
+
+            {/* אייקון אבטחה */}
+            <View style={styles.secureContainer}>
+                <Ionicons name="shield-checkmark-outline" size={14} color="#888" />
+                <Text style={styles.secureText}>100% Secure Login</Text>
+            </View>
+
         </View>
 
         <Modal
@@ -318,8 +387,12 @@ const styles = StyleSheet.create({
   forgotButton: { padding: 5 },
   forgotText: { color: '#E91E63', fontSize: 14, fontWeight: '600' },
 
-  loginButton: { backgroundColor: '#E91E63', borderRadius: 10, height: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 20, shadowColor: "#E91E63", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 4 },
+  loginButton: { backgroundColor: '#E91E63', borderRadius: 10, height: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 15, shadowColor: "#E91E63", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 4 },
   loginButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  
+  biometricButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 25, gap: 10, padding: 10 },
+  biometricText: { color: '#E91E63', fontSize: 16, fontWeight: 'bold' },
+
   socialRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
   socialButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 10, paddingVertical: 12, width: '48%' },
   socialIcon: { width: 22, height: 22, marginRight: 10 },
@@ -327,6 +400,9 @@ const styles = StyleSheet.create({
   signupContainer: { flexDirection: 'row', justifyContent: 'center' },
   signupText: { color: '#666', fontSize: 16 },
   signupButton: { color: '#E91E63', fontSize: 16, fontWeight: 'bold' },
+
+  secureContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 30, gap: 5 },
+  secureText: { color: '#888', fontSize: 12 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#fff', borderRadius: 20, padding: 25, width: '100%', maxWidth: 400, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },

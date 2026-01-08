@@ -1,29 +1,102 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, TouchableOpacity, Image, Alert, 
-  SafeAreaView, ScrollView, Modal, Switch, ActivityIndicator, Platform 
+  SafeAreaView, ScrollView, Modal, Switch, ActivityIndicator, Platform, TextInput 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../../firebaseConfig';
-import { signOut } from 'firebase/auth';
-// 👇 ייבואים חדשים שצריך בשביל הלוגיקה של ה"שרת"
-import { collection, getDocs, query, where, writeBatch, doc, Timestamp } from 'firebase/firestore';
+import { signOut, updateProfile } from 'firebase/auth'; 
+import { collection, getDocs, query, where, writeBatch, doc, updateDoc } from 'firebase/firestore';
+
+// --- מילון תרגומים (עברית / אנגלית) ---
+const translations = {
+  en: {
+    verified: "Verified Member",
+    preferences: "PREFERENCES",
+    appSettings: "App Settings",
+    paymentMethods: "Payment Methods",
+    support: "SUPPORT",
+    helpSupport: "Help & Support",
+    logOut: "Log Out",
+    adminZone: "ADMIN ZONE (DEMO ONLY)",
+    runChecks: "Run Daily System Checks 🔄",
+    adminDesc: "Closes expired groups, refunds users, and triggers emails.",
+    // Modal
+    modalTitle: "App Settings",
+    langSection: "Language / שפה",
+    pushTitle: "Push Notifications",
+    pushSub: "Get updates on your groups",
+    emailTitle: "Email Updates",
+    emailSub: "Receive receipts & news",
+    faceIdTitle: "Face ID / Biometric",
+    faceIdSub: "Secure quick login",
+    saveChanges: "Save Changes",
+    // Name Edit
+    editNameTitle: "Edit Name",
+    enterName: "Enter full name",
+    cancel: "Cancel",
+    save: "Save"
+  },
+  he: {
+    verified: "חבר מאומת",
+    preferences: "העדפות",
+    appSettings: "הגדרות אפליקציה",
+    paymentMethods: "אמצעי תשלום",
+    support: "תמיכה",
+    helpSupport: "עזרה ותמיכה",
+    logOut: "התנתק",
+    adminZone: "אזור ניהול (דמו)",
+    runChecks: "הרץ בדיקות מערכת 🔄",
+    adminDesc: "סגירת קבוצות, ביצוע זיכויים ושליחת הודעות.",
+    // Modal
+    modalTitle: "הגדרות",
+    langSection: "שפה / Language",
+    pushTitle: "התראות דחיפה",
+    pushSub: "קבל עדכונים על הקבוצות שלך",
+    emailTitle: "עדכונים במייל",
+    emailSub: "קבלות וחדשות חשובות",
+    faceIdTitle: "זיהוי פנים / ביומטרי",
+    faceIdSub: "כניסה מהירה ומאובטחת",
+    saveChanges: "שמור שינויים",
+    // Name Edit
+    editNameTitle: "עריכת שם",
+    enterName: "הכנס שם מלא",
+    cancel: "ביטול",
+    save: "שמור"
+  }
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
   const user = auth.currentUser;
 
-  // משתנים לחלון ההגדרות
+  // --- משתנים לניהול המשתמש והתצוגה ---
+  const [userData, setUserData] = useState({
+    displayName: user?.displayName || 'BuyForce User',
+    email: user?.email || 'user@example.com',
+    photoURL: user?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+  });
+
+  // --- משתנים לעריכת שם ---
+  const [isNameModalVisible, setNameModalVisible] = useState(false);
+  const [newFullName, setNewFullName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  // --- משתנים לחלון ההגדרות ---
   const [modalVisible, setModalVisible] = useState(false);
   const [isPushOn, setIsPushOn] = useState(true);
   const [isEmailOn, setIsEmailOn] = useState(true);
-  const [isFaceIdOn, setIsFaceIdOn] = useState(false);
+  const [isFaceIdOn, setIsFaceIdOn] = useState(true); // החזרנו את זה!
+  const [appLanguage, setAppLanguage] = useState<"en" | "he">("en"); // ברירת מחדל אנגלית
   const [saving, setSaving] = useState(false);
   
-  // משתנה לטעינה של כפתור המנהל
   const [adminLoading, setAdminLoading] = useState(false);
 
+  // שימוש בטקסטים לפי השפה הנבחרת
+  const t = translations[appLanguage];
+
+  // --- לוגיקה ליציאה מהחשבון ---
   const handleLogout = async () => {
     const performLogout = async () => {
         try {
@@ -31,8 +104,7 @@ export default function ProfileScreen() {
             router.replace('/login'); 
         } catch (error) {
             console.error(error);
-            if (Platform.OS === 'web') alert("Failed to log out");
-            else Alert.alert("Error", "Failed to log out");
+            Alert.alert("Error", "Failed to log out");
         }
     };
 
@@ -42,31 +114,55 @@ export default function ProfileScreen() {
         }
     } else {
         Alert.alert(
-            "Sign Out",
-            "Are you sure you want to log out?",
+            "Sign Out", "Are you sure you want to log out?",
             [
               { text: "Cancel", style: "cancel" },
-              { 
-                text: "Yes, Log Out", 
-                style: 'destructive',
-                onPress: performLogout
-              }
+              { text: "Yes, Log Out", style: 'destructive', onPress: performLogout }
             ]
         );
     }
   };
 
+  // --- לוגיקה לעריכת שם ---
+  const openNameEdit = () => {
+    setNewFullName(userData.displayName);
+    setNameModalVisible(true);
+  };
+
+  const handleSaveName = async () => {
+    if (!user || !newFullName.trim()) return;
+    setIsSavingName(true);
+    
+    try {
+      await updateProfile(user, { displayName: newFullName });
+      const userRef = doc(db, 'users', user.uid);
+      try { await updateDoc(userRef, { full_name: newFullName }); } catch (e) {}
+
+      setUserData(prev => ({ ...prev, displayName: newFullName }));
+      setNameModalVisible(false);
+      Alert.alert("Success", "Name updated successfully!");
+    } catch (error) {
+      console.error("Error updating name:", error);
+      Alert.alert("Error", "Could not update name.");
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  // --- לוגיקה לשמירת הגדרות ---
   const saveSettings = () => {
       setSaving(true);
       setTimeout(() => {
           setSaving(false);
           setModalVisible(false);
-          if (Platform.OS === 'web') alert("Settings Saved");
-          else Alert.alert("Settings Saved", "Your preferences have been updated successfully.");
-      }, 1000);
+          // כאן השפה "נתפסת" והמסך יתעדכן כי ה-State השתנה
+          const msg = appLanguage === 'he' ? "הגדרות נשמרו בהצלחה" : "Settings Saved";
+          if (Platform.OS === 'web') alert(msg);
+          else Alert.alert("Success", msg);
+      }, 800);
   };
 
-  // 👇👇👇 הפונקציה החכמה שמחליפה את השרת 👇👇👇
+  // --- לוגיקה של כפתור המנהל (שרת) ---
   const runAdminChecks = async () => {
     setAdminLoading(true);
     try {
@@ -74,8 +170,6 @@ export default function ProfileScreen() {
         const now = new Date();
         let processedCount = 0;
 
-        // 1. מביאים את כל המוצרים שעדיין פתוחים
-        // הערה: בפרויקט אמיתי עושים את הסינון בתאריך בשאילתה, כאן נעשה בקוד לפשטות
         const productsRef = collection(db, 'products');
         const q = query(productsRef, where('status', '!=', 'EXPIRED')); 
         const querySnapshot = await getDocs(q);
@@ -83,65 +177,42 @@ export default function ProfileScreen() {
         for (const productDoc of querySnapshot.docs) {
             const data = productDoc.data();
             const deadline = data.deadline ? new Date(data.deadline) : null;
-            
-            // אם אין דדליין, נניח שהמוצר פג תוקף אחרי 24 שעות מהיצירה (אם יש שדה כזה) או שנדלג
             if (!deadline) continue;
 
-            // בדיקה: האם עבר הזמן? והאם הקבוצה לא מלאה?
             const currentBuyers = data.currentBuyers || 0;
             const targetBuyers = parseFloat(data.targetBuyers || '1000');
 
             if (now > deadline && currentBuyers < targetBuyers) {
-                // מצאנו קבוצה שצריך לסגור ולזכות!
                 processedCount++;
                 const productId = productDoc.id;
-
-                // א. עדכון סטטוס הקבוצה
                 const prodRef = doc(db, 'products', productId);
                 batch.update(prodRef, { status: 'EXPIRED' });
 
-                // ב. מציאת כל ההזמנות של הקבוצה הזו
                 const ordersRef = collection(db, 'orders');
                 const ordersQ = query(ordersRef, where('productId', '==', productId), where('status', '==', 'PAID'));
                 const ordersSnapshot = await getDocs(ordersQ);
 
                 for (const orderDoc of ordersSnapshot.docs) {
                     const orderData = orderDoc.data();
-                    
-                    // ג. זיכוי ההזמנה (שינוי סטטוס)
                     const orderRef = doc(db, 'orders', orderDoc.id);
                     batch.update(orderRef, { status: 'REFUNDED', refundedAt: new Date() });
 
-                    // ד. שליחת מייל ללקוח (דרך תוסף Trigger Email)
-                    // אם התקנת את התוסף בפיירבייס, זה ישלח מייל אמיתי.
-                    // אם לא, זה פשוט ייצור מסמך בקולקציה וזה בסדר להדגמה.
                     const mailRef = doc(collection(db, 'mail'));
                     batch.set(mailRef, {
                         to: orderData.userEmail,
                         message: {
                             subject: `BuyForce Update: Group Closed & Refunded - ${data.title}`,
-                            html: `
-                                <p>Hi ${orderData.userName || 'Customer'},</p>
-                                <p>The group buying for <strong>${data.title}</strong> has ended.</p>
-                                <p>Unfortunately, we didn't reach the target of ${targetBuyers} buyers.</p>
-                                <p style="color:red; font-weight:bold;">Your payment of ₪1.00 has been refunded.</p>
-                                <p>Thanks, BuyForce Team.</p>
-                            `
+                            html: `<p>The group buying for <strong>${data.title}</strong> has ended. Refund issued.</p>`
                         }
                     });
                 }
             }
         }
-
-        // ביצוע כל השינויים
         await batch.commit();
-
         const msg = `System Check Complete.\nProcessed ${processedCount} expired groups.`;
-        if (Platform.OS === 'web') alert(msg);
-        else Alert.alert("Admin Task", msg);
+        Alert.alert("Admin Task", msg);
 
     } catch (error: any) {
-        console.error("Admin check failed:", error);
         Alert.alert("Error", error.message);
     } finally {
         setAdminLoading(false);
@@ -155,73 +226,63 @@ export default function ProfileScreen() {
         {/* Header - User Info */}
         <View style={styles.header}>
             <View style={styles.avatarContainer}>
-                <Image 
-                    source={{ uri: user?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }} 
-                    style={styles.avatar} 
-                />
-                <TouchableOpacity style={styles.editIcon} onPress={() => Alert.alert("Edit Photo", "Gallery access required.")}>
+                <Image source={{ uri: userData.photoURL }} style={styles.avatar} />
+                <TouchableOpacity style={styles.editIcon} onPress={openNameEdit}>
                     <Ionicons name="pencil" size={16} color="#fff" />
                 </TouchableOpacity>
             </View>
-            <Text style={styles.name}>{user?.displayName || 'BuyForce User'}</Text>
-            <Text style={styles.email}>{user?.email || 'user@example.com'}</Text>
+            <Text style={styles.name}>{userData.displayName}</Text>
+            <Text style={styles.email}>{userData.email}</Text>
             <View style={styles.badge}>
-                <Text style={styles.badgeText}>Verified Member</Text>
+                <Text style={styles.badgeText}>{t.verified}</Text>
             </View>
         </View>
 
         {/* Menu Section */}
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preferences</Text>
+            <Text style={[styles.sectionTitle, appLanguage === 'he' && {textAlign: 'right'}]}>{t.preferences}</Text>
             
-            <TouchableOpacity style={styles.menuItem} onPress={() => setModalVisible(true)}>
-                <View style={styles.menuItemLeft}>
-                    <View style={[styles.iconBox, {backgroundColor: '#E3F2FD'}]}>
+            <TouchableOpacity style={[styles.menuItem, appLanguage === 'he' && {flexDirection: 'row-reverse'}]} onPress={() => setModalVisible(true)}>
+                <View style={[styles.menuItemLeft, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                    <View style={[styles.iconBox, {backgroundColor: '#E3F2FD', marginRight: appLanguage==='he'?0:15, marginLeft: appLanguage==='he'?15:0}]}>
                         <Ionicons name="settings-outline" size={22} color="#2196F3" />
                     </View>
-                    <Text style={styles.menuItemText}>App Settings</Text>
+                    <Text style={styles.menuItemText}>{t.appSettings}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                <Ionicons name={appLanguage==='he' ? "chevron-back" : "chevron-forward"} size={20} color="#ccc" />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => router.push('/payment-methods')}
-            >
-                <View style={styles.menuItemLeft}>
-                    <View style={[styles.iconBox, {backgroundColor: '#E8F5E9'}]}>
+            <TouchableOpacity style={[styles.menuItem, appLanguage === 'he' && {flexDirection: 'row-reverse'}]} onPress={() => router.push('/payment-methods')}>
+                <View style={[styles.menuItemLeft, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                    <View style={[styles.iconBox, {backgroundColor: '#E8F5E9', marginRight: appLanguage==='he'?0:15, marginLeft: appLanguage==='he'?15:0}]}>
                         <Ionicons name="card-outline" size={22} color="#4CAF50" />
                     </View>
-                    <Text style={styles.menuItemText}>Payment Methods</Text>
+                    <Text style={styles.menuItemText}>{t.paymentMethods}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                <Ionicons name={appLanguage==='he' ? "chevron-back" : "chevron-forward"} size={20} color="#ccc" />
             </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Support</Text>
-            
-            <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => router.push('/help')}
-            >
-                <View style={styles.menuItemLeft}>
-                    <View style={[styles.iconBox, {backgroundColor: '#FFF3E0'}]}>
+            <Text style={[styles.sectionTitle, appLanguage === 'he' && {textAlign: 'right'}]}>{t.support}</Text>
+            <TouchableOpacity style={[styles.menuItem, appLanguage === 'he' && {flexDirection: 'row-reverse'}]} onPress={() => router.push('/help')}>
+                <View style={[styles.menuItemLeft, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                    <View style={[styles.iconBox, {backgroundColor: '#FFF3E0', marginRight: appLanguage==='he'?0:15, marginLeft: appLanguage==='he'?15:0}]}>
                         <Ionicons name="help-circle-outline" size={22} color="#FF9800" />
                     </View>
-                    <Text style={styles.menuItemText}>Help & Support</Text>
+                    <Text style={styles.menuItemText}>{t.helpSupport}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                <Ionicons name={appLanguage==='he' ? "chevron-back" : "chevron-forward"} size={20} color="#ccc" />
             </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Log Out</Text>
+            <Text style={styles.logoutText}>{t.logOut}</Text>
         </TouchableOpacity>
 
-        {/* 👇👇👇 כפתור המנהל הסודי 👇👇👇 */}
+        {/* Admin Zone */}
         <View style={styles.adminSection}>
-            <Text style={styles.adminTitle}>Admin Zone (Demo Only)</Text>
+            <Text style={styles.adminTitle}>{t.adminZone}</Text>
             <TouchableOpacity 
                 style={[styles.adminButton, adminLoading && { opacity: 0.6 }]} 
                 onPress={runAdminChecks}
@@ -230,17 +291,43 @@ export default function ProfileScreen() {
                 {adminLoading ? (
                     <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                    <Text style={styles.adminButtonText}>Run Daily System Checks 🔄</Text>
+                    <Text style={styles.adminButtonText}>{t.runChecks}</Text>
                 )}
             </TouchableOpacity>
-            <Text style={styles.adminDesc}>
-                Closes expired groups, refunds users, and triggers emails.
-            </Text>
+            <Text style={styles.adminDesc}>{t.adminDesc}</Text>
         </View>
 
       </ScrollView>
 
-      {/* Modal */}
+      {/* --- חלון עריכת שם (Modal) --- */}
+      <Modal
+        visible={isNameModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setNameModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, {minHeight: 250, justifyContent: 'center'}]}>
+            <Text style={[styles.modalTitle, {textAlign: 'center'}]}>{t.editNameTitle}</Text>
+            <TextInput
+              style={[styles.input, {textAlign: appLanguage==='he'?'right':'left'}]}
+              value={newFullName}
+              onChangeText={setNewFullName}
+              placeholder={t.enterName}
+            />
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity onPress={() => setNameModalVisible(false)} style={styles.cancelButton}>
+                <Text style={styles.buttonText}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSaveName} style={styles.saveActionBtn}>
+                {isSavingName ? <ActivityIndicator color="#FFF"/> : <Text style={[styles.buttonText, {color: '#FFF'}]}>{t.save}</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- חלון הגדרות (Modal) --- */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -249,17 +336,38 @@ export default function ProfileScreen() {
       >
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>App Settings</Text>
+                <View style={[styles.modalHeader, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                    <Text style={styles.modalTitle}>{t.modalTitle}</Text>
                     <TouchableOpacity onPress={() => setModalVisible(false)}>
                         <Ionicons name="close" size={24} color="#333" />
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.settingRow}>
-                    <View>
-                        <Text style={styles.settingLabel}>Push Notifications</Text>
-                        <Text style={styles.settingSub}>Get updates on your groups</Text>
+                {/* בחירת שפה */}
+                <Text style={[styles.sectionHeader, appLanguage==='he' && {textAlign: 'right'}]}>{t.langSection}</Text>
+                <View style={[styles.row, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                  <TouchableOpacity 
+                    onPress={() => setAppLanguage('he')}
+                    style={[styles.langButton, appLanguage === 'he' && styles.activeLang]}
+                  >
+                    <Text style={{fontWeight: appLanguage==='he'?'bold':'normal'}}>עברית 🇮🇱</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    onPress={() => setAppLanguage('en')}
+                    style={[styles.langButton, appLanguage === 'en' && styles.activeLang]}
+                  >
+                    <Text style={{fontWeight: appLanguage==='en'?'bold':'normal'}}>English 🇺🇸</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.divider} />
+
+                {/* הגדרות */}
+                <View style={[styles.settingRow, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                    <View style={appLanguage === 'he' && {alignItems: 'flex-end'}}>
+                        <Text style={styles.settingLabel}>{t.pushTitle}</Text>
+                        <Text style={styles.settingSub}>{t.pushSub}</Text>
                     </View>
                     <Switch 
                         trackColor={{ false: "#767577", true: "#E91E63" }}
@@ -269,10 +377,10 @@ export default function ProfileScreen() {
                     />
                 </View>
 
-                <View style={styles.settingRow}>
-                    <View>
-                        <Text style={styles.settingLabel}>Email Updates</Text>
-                        <Text style={styles.settingSub}>Receive receipts & news</Text>
+                <View style={[styles.settingRow, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                    <View style={appLanguage === 'he' && {alignItems: 'flex-end'}}>
+                        <Text style={styles.settingLabel}>{t.emailTitle}</Text>
+                        <Text style={styles.settingSub}>{t.emailSub}</Text>
                     </View>
                     <Switch 
                         trackColor={{ false: "#767577", true: "#E91E63" }}
@@ -282,10 +390,11 @@ export default function ProfileScreen() {
                     />
                 </View>
 
-                <View style={styles.settingRow}>
-                    <View>
-                        <Text style={styles.settingLabel}>Face ID / Biometric</Text>
-                        <Text style={styles.settingSub}>Secure quick login</Text>
+                {/* 👇 הוספנו בחזרה את זיהוי הפנים! 👇 */}
+                <View style={[styles.settingRow, appLanguage === 'he' && {flexDirection: 'row-reverse'}]}>
+                    <View style={appLanguage === 'he' && {alignItems: 'flex-end'}}>
+                        <Text style={styles.settingLabel}>{t.faceIdTitle}</Text>
+                        <Text style={styles.settingSub}>{t.faceIdSub}</Text>
                     </View>
                     <Switch 
                         trackColor={{ false: "#767577", true: "#4CAF50" }}
@@ -299,7 +408,7 @@ export default function ProfileScreen() {
                     {saving ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                        <Text style={styles.saveButtonText}>{t.saveChanges}</Text>
                     )}
                 </TouchableOpacity>
             </View>
@@ -338,7 +447,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#f9f9f9' 
   },
   menuItemLeft: { flexDirection: 'row', alignItems: 'center' },
-  iconBox: { width: 36, height: 36, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  iconBox: { width: 36, height: 36, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   menuItemText: { fontSize: 16, color: '#333', fontWeight: '500' },
 
   logoutButton: { 
@@ -355,7 +464,7 @@ const styles = StyleSheet.create({
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center'
   },
   adminButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  adminDesc: { color: '#999', fontSize: 10, marginTop: 8, fontStyle: 'italic' },
+  adminDesc: { color: '#999', fontSize: 10, marginTop: 8, fontStyle: 'italic', textAlign: 'center' },
 
   // Modal Styles
   modalOverlay: {
@@ -366,7 +475,7 @@ const styles = StyleSheet.create({
       minHeight: 350
   },
   modalHeader: {
-      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20
   },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
   settingRow: {
@@ -377,5 +486,30 @@ const styles = StyleSheet.create({
   saveButton: {
       backgroundColor: '#E91E63', padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 20
   },
-  saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+  saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+
+  // New Styles
+  input: {
+    borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12,
+    marginBottom: 20, fontSize: 16, backgroundColor: '#FAFAFA'
+  },
+  modalButtonsRow: {
+    flexDirection: 'row', justifyContent: 'space-between', gap: 10
+  },
+  cancelButton: {
+    backgroundColor: '#EEE', padding: 12, borderRadius: 10, flex: 1, alignItems: 'center'
+  },
+  saveActionBtn: {
+    backgroundColor: '#E91E63', padding: 12, borderRadius: 10, flex: 1, alignItems: 'center'
+  },
+  buttonText: { fontWeight: 'bold', fontSize: 16 },
+  
+  // Language Styles
+  sectionHeader: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 10 },
+  row: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  langButton: {
+    flex: 1, padding: 10, borderWidth: 1, borderColor: '#DDD', borderRadius: 8, alignItems: 'center'
+  },
+  activeLang: { backgroundColor: '#E3F2FD', borderColor: '#2196F3' },
+  divider: { height: 1, backgroundColor: '#EEE', marginVertical: 15 },
 });

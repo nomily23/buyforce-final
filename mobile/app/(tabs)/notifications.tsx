@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import { 
+  StyleSheet, View, Text, FlatList, SafeAreaView, TouchableOpacity, Alert, Vibration 
+} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -8,44 +10,46 @@ const initialNotifications = [
   {
     id: '1',
     type: 'success', 
-    title: 'Group Completed!',
-    message: 'The Coffee Machine group reached its target. Tap to pay the remainder.',
+    title: 'Group Completed! 🎉',
+    message: 'The Sony Headphones group reached its target! Tap to pay the remainder.',
     time: '2 hours ago',
     read: false,
-    targetScreen: '/(tabs)/my-group' // לאן זה לוקח
-  },
-  {
-    id: '5',
-    type: 'refund',
-    title: 'Group Failed - Refund Issued',
-    message: 'The Premium Wine Cooler group ended without reaching the target. Your ₪1.00 deposit has been refunded successfully.',
-    time: '3 hours ago',
-    read: false,
-    targetScreen: '/(tabs)/my-group'
+    targetScreen: '/(tabs)/my-group',
+    params: { tab: 'active' }
   },
   {
     id: '2',
-    type: 'info',
-    title: 'Payment Successful',
-    message: 'We received your deposit for the Gaming Laptop.',
+    type: 'alert',
+    title: 'Price Drop Alert 📉',
+    message: 'Ninja Blender is now 30% cheaper. Join the group before it fills up!',
+    time: '5 hours ago',
+    read: false,
+    targetScreen: '/(tabs)/home',
+  },
+  {
+    id: '3',
+    type: 'refund',
+    title: 'Group Refunded',
+    message: 'The Wine Cooler group failed. Your ₪1.00 deposit has been refunded.',
     time: '1 day ago',
+    read: true,
+    targetScreen: '/(tabs)/my-group',
+    params: { tab: 'history' }
+  },
+  {
+    id: '4',
+    type: 'info',
+    title: 'Payment Received',
+    message: 'We received your deposit for the Gaming Laptop.',
+    time: '2 days ago',
     read: true,
     targetScreen: '/(tabs)/my-group'
   },
   {
-    id: '3',
-    type: 'alert',
-    title: 'Hurry Up!',
-    message: 'Only 2 buyers needed to complete the Dyson V15 group.',
-    time: '2 days ago',
-    read: true,
-    targetScreen: '/(tabs)/home' // לוקח לקטלוג
-  },
-  {
-    id: '4',
+    id: '5',
     type: 'system',
-    title: 'Welcome to GroupBuy',
-    message: 'Thanks for joining! Start browsing our deals.',
+    title: 'Welcome to BuyForce 👋',
+    message: 'Thanks for joining! Start your first group purchase today and save big.',
     time: '1 week ago',
     read: true,
     targetScreen: '/(tabs)/home'
@@ -54,16 +58,19 @@ const initialNotifications = [
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  
-  // שימוש ב-useState כדי שנוכל למחוק התראות או לסמן כנקראו
   const [notifications, setNotifications] = useState(initialNotifications);
+  
+  // --- ניהול מצב בחירה (Selection Mode) ---
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const isSelectionMode = selectedIds.length > 0;
 
   const getIcon = (type: string) => {
     switch (type) {
       case 'success': return 'checkmark-circle';
-      case 'alert': return 'alert-circle';
+      case 'alert': return 'trending-down';
       case 'info': return 'information-circle';
-      case 'refund': return 'close-circle';
+      case 'refund': return 'alert-circle';
+      case 'system': return 'star';
       default: return 'notifications';
     }
   };
@@ -74,72 +81,147 @@ export default function NotificationsScreen() {
       case 'alert': return '#FF9800';   
       case 'info': return '#2196F3';    
       case 'refund': return '#D32F2F';  
+      case 'system': return '#E91E63';      
       default: return '#757575';        
     }
   };
 
-  // פונקציה לטיפול בלחיצה על התראה
-  const handleNotificationPress = (item: any) => {
-      // 1. מסמנים כנקרא (מוריד את הרקע הכחול)
-      const updatedList = notifications.map(n => 
-          n.id === item.id ? { ...n, read: true } : n
-      );
-      setNotifications(updatedList);
-
-      // 2. מעבירים למסך הרלוונטי
-      if (item.targetScreen) {
-          router.push(item.targetScreen);
-      }
+  // --- לוגיקה ללחיצה ארוכה (כניסה למצב בחירה) ---
+  const handleLongPress = (id: string) => {
+    Vibration.vibrate(50); // רטט קטן למשוב
+    if (!selectedIds.includes(id)) {
+        setSelectedIds([...selectedIds, id]);
+    }
   };
 
-  // פונקציה לניקוי הכל
-  const clearAll = () => {
-      if (notifications.length === 0) return;
-      
-      Alert.alert(
-          "Clear Notifications",
-          "Are you sure you want to delete all notifications?",
-          [
-              { text: "Cancel", style: "cancel" },
-              { text: "Clear All", style: "destructive", onPress: () => setNotifications([]) }
-          ]
-      );
+  // --- לוגיקה ללחיצה רגילה ---
+  const handlePress = (item: any) => {
+    if (isSelectionMode) {
+        // אם אנחנו במצב בחירה - הלחיצה רק מסמנת/מבטלת סימון
+        if (selectedIds.includes(item.id)) {
+            const newIds = selectedIds.filter(id => id !== item.id);
+            setSelectedIds(newIds);
+        } else {
+            setSelectedIds([...selectedIds, item.id]);
+        }
+    } else {
+        // מצב רגיל - פתיחת ההודעה
+        const updatedList = notifications.map(n => 
+            n.id === item.id ? { ...n, read: true } : n
+        );
+        setNotifications(updatedList);
+
+        if (item.targetScreen) {
+            router.push({
+              pathname: item.targetScreen,
+              params: item.params || {} 
+            });
+        }
+    }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={() => handleNotificationPress(item)}
-        style={[styles.card, !item.read && styles.unreadCard]}
-    >
-      <View style={styles.iconContainer}>
-        <Ionicons name={getIcon(item.type) as any} size={28} color={getColor(item.type)} />
-      </View>
-      <View style={styles.textContainer}>
-        <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={styles.title}>{item.title}</Text>
-            {!item.read && <View style={styles.dot} />}
-        </View>
-        <Text style={styles.message}>{item.message}</Text>
-        <Text style={styles.time}>{item.time}</Text>
-      </View>
-      
-      {/* חץ קטן שמסמן שאפשר ללחוץ */}
-      <Ionicons name="chevron-forward" size={20} color="#ccc" style={{marginLeft: 10}} />
-    </TouchableOpacity>
-  );
+  // מחיקת הפריטים שנבחרו
+  const deleteSelected = () => {
+    Alert.alert(
+        "Delete Notifications",
+        `Are you sure you want to delete ${selectedIds.length} items?`,
+        [
+            { text: "Cancel", style: "cancel" },
+            { 
+                text: "Delete", 
+                style: "destructive", 
+                onPress: () => {
+                    const filtered = notifications.filter(n => !selectedIds.includes(n.id));
+                    setNotifications(filtered);
+                    setSelectedIds([]); // יציאה ממצב בחירה
+                }
+            }
+        ]
+    );
+  };
+
+  const markAllAsRead = () => {
+    const updatedList = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updatedList);
+  };
+
+  const cancelSelection = () => {
+      setSelectedIds([]);
+  };
+
+  const renderItem = ({ item }: { item: any }) => {
+    const isSelected = selectedIds.includes(item.id);
+
+    return (
+        <TouchableOpacity 
+            activeOpacity={0.7}
+            onLongPress={() => handleLongPress(item.id)}
+            onPress={() => handlePress(item)}
+            style={[
+                styles.card, 
+                !item.read && !isSelectionMode && styles.unreadCard,
+                isSelected && styles.selectedCard // עיצוב מיוחד אם נבחר
+            ]}
+        >
+          {/* אייקון סימון (מופיע רק במצב בחירה) */}
+          {isSelectionMode && (
+              <View style={styles.selectionIcon}>
+                  <Ionicons 
+                    name={isSelected ? "checkbox" : "square-outline"} 
+                    size={24} 
+                    color={isSelected ? "#E91E63" : "#ccc"} 
+                  />
+              </View>
+          )}
+
+          {/* אייקון ההודעה */}
+          <View style={[styles.iconContainer, { backgroundColor: getColor(item.type) + '15' }]}>
+            <Ionicons name={getIcon(item.type) as any} size={24} color={getColor(item.type)} />
+          </View>
+
+          <View style={styles.textContainer}>
+            <View style={styles.headerRow}>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.time}>{item.time}</Text>
+            </View>
+            <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
+          </View>
+          
+          {!item.read && !isSelectionMode && <View style={styles.dot} />}
+        </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header עם כפתור מחיקה */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {notifications.length > 0 && (
-            <TouchableOpacity onPress={clearAll} style={styles.clearButton}>
-                <Text style={styles.clearText}>Clear All</Text>
-            </TouchableOpacity>
+      {/* --- Header דינמי --- */}
+      <View style={[styles.header, isSelectionMode && styles.selectionHeader]}>
+        
+        {isSelectionMode ? (
+            // מצב בחירה
+            <>
+                <TouchableOpacity onPress={cancelSelection}>
+                    <Ionicons name="close" size={26} color="#333" />
+                </TouchableOpacity>
+                <Text style={styles.selectionTitle}>{selectedIds.length} Selected</Text>
+                <TouchableOpacity onPress={deleteSelected}>
+                    <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+                </TouchableOpacity>
+            </>
+        ) : (
+            // מצב רגיל
+            <>
+                <Text style={styles.headerTitle}>Updates</Text>
+                <View style={{flexDirection: 'row', gap: 15}}>
+                    {notifications.some(n => !n.read) && (
+                        <TouchableOpacity onPress={markAllAsRead}>
+                            <Text style={styles.actionText}>Read all</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </>
         )}
       </View>
 
@@ -149,9 +231,9 @@ export default function NotificationsScreen() {
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-            <View style={{alignItems: 'center', marginTop: 100}}>
-                <Ionicons name="notifications-off-outline" size={60} color="#ccc" />
-                <Text style={{color: '#999', marginTop: 10, fontSize: 16}}>No notifications yet</Text>
+            <View style={{alignItems: 'center', marginTop: 100, opacity: 0.5}}>
+                <Ionicons name="notifications-off-outline" size={80} color="#ccc" />
+                <Text style={{marginTop: 20, fontSize: 16}}>No new updates</Text>
             </View>
         }
       />
@@ -160,31 +242,47 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { 
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 20, paddingTop: 50, 
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee',
-    position: 'relative'
-  },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  container: { flex: 1, backgroundColor: '#f9f9f9' },
   
-  clearButton: { position: 'absolute', right: 20, bottom: 20 },
-  clearText: { color: '#E91E63', fontWeight: '600', fontSize: 14 },
+  header: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 50, 
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee'
+  },
+  selectionHeader: {
+      backgroundColor: '#FFE0E9', // צבע רקע עדין במצב בחירה
+  },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  selectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  actionText: { color: '#E91E63', fontWeight: '600', fontSize: 14 },
 
   list: { padding: 15 },
   
   card: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 12,
-    elevation: 2, alignItems: 'center'
+    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 15, padding: 15, marginBottom: 12,
+    elevation: 2, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: {width:0, height:2}
   },
-  unreadCard: { backgroundColor: '#F0F7FF', borderLeftWidth: 4, borderLeftColor: '#2196F3' },
+  unreadCard: { 
+      backgroundColor: '#fff', 
+      borderLeftWidth: 4, 
+      borderLeftColor: '#E91E63' 
+  },
+  selectedCard: {
+      backgroundColor: '#FFF0F5', // ורוד בהיר מאוד כשנבחר
+      borderColor: '#E91E63',
+      borderWidth: 1
+  },
   
-  iconContainer: { marginRight: 15 },
+  selectionIcon: { marginRight: 10 },
+  iconContainer: { 
+      width: 45, height: 45, borderRadius: 25, 
+      justifyContent: 'center', alignItems: 'center', marginRight: 15 
+  },
   textContainer: { flex: 1 },
   
-  title: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 2 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  title: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  time: { fontSize: 12, color: '#999' },
   message: { fontSize: 14, color: '#666', lineHeight: 20 },
-  time: { fontSize: 12, color: '#999', marginTop: 5 },
   
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2196F3' }
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E91E63', marginLeft: 10 }
 });

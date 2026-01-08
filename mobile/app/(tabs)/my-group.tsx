@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, View, Text, FlatList, Image, SafeAreaView, 
-  TouchableOpacity, Modal, TextInput, ActivityIndicator, Alert, useWindowDimensions, Platform 
+  TouchableOpacity, Modal, TextInput, ActivityIndicator, Alert, useWindowDimensions, Platform, Share 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +19,6 @@ export default function MyGroupsScreen() {
   const [productsMap, setProductsMap] = useState<{[key: string]: any}>({});
   const [loading, setLoading] = useState(true);
 
-  // ניהול הטאבים
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -30,6 +29,24 @@ export default function MyGroupsScreen() {
     const cleanString = String(value).replace(/[^\d.]/g, ''); 
     const number = parseFloat(cleanString);
     return isNaN(number) ? 0 : number;
+  };
+
+  // פונקציית עזר לפרמוט תאריך (לקבלה)
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    // מטפל במקרה שזה Timestamp של פיירבייס או תאריך רגיל
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('he-IL');
+  };
+
+  // פונקציית עזר לחישוב ימים שנותרו
+  const getDaysLeft = (deadlineStr: string) => {
+    if (!deadlineStr) return null;
+    const end = new Date(deadlineStr);
+    const now = new Date();
+    const diff = end.getTime() - now.getTime();
+    const days = Math.ceil(diff / (1000 * 3600 * 24));
+    return days > 0 ? days : 0;
   };
 
   useEffect(() => {
@@ -67,6 +84,16 @@ export default function MyGroupsScreen() {
 
     return () => unsubscribe();
   }, []);
+
+  const handleShareGroup = async (productName: string, groupPrice: any) => {
+    try {
+      await Share.share({
+        message: `Join me on BuyForce! 🛍️\nLet's buy ${productName} together for only ₪${groupPrice}!\nWe need more people to unlock this price!`,
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const handleLeaveGroup = async (orderId: string, productId: string) => {
     const deleteOrder = async () => {
@@ -116,14 +143,13 @@ export default function MyGroupsScreen() {
     return mainOrders.map(order => {
         const liveProduct = productsMap[order.productId];
         
-        // אם המוצר לא קיים או שהסטטוס שלו מוגדר כ-failed בבסיס הנתונים
         const isProductFailed = liveProduct?.status === 'failed'; 
-        const isOrderRefunded = order.status === 'refunded';
+        const isOrderRefunded = order.status === 'refunded'; // שים לב ל-Lowercase אם ככה שמרת
+        const isOrderREFUNDED = order.status === 'REFUNDED'; // שים לב ל-Uppercase מהאדמין
         
-        // מצב "נכשל" או "בוטל"
-        const isFailedState = isProductFailed || isOrderRefunded;
+        const isFailedState = isProductFailed || isOrderRefunded || isOrderREFUNDED;
 
-        if (!liveProduct && !isFailedState) return null; // מוצר נמחק ואין תיעוד לכישלון
+        if (!liveProduct && !isFailedState) return null;
 
         const currentBuyers = parsePrice(liveProduct?.currentBuyers) || 0;
         const targetBuyers = parsePrice(liveProduct?.targetBuyers) || 10;
@@ -150,14 +176,14 @@ export default function MyGroupsScreen() {
             fullPrice: fullPrice,
             totalAmountPaid: totalAmountPaid, 
             isFullyPaid: remaining === 0,
-            isFailed: isFailedState // 👇 דגל חדש לזיהוי כישלון
+            isFailed: isFailedState,
+            deadline: liveProduct?.deadline // הוספנו דדליין
         };
     }).filter(item => item !== null);
   };
 
   const processedOrders = getProcessedOrders();
 
-  // 👇👇👇 לוגיקת הסינון המעודכנת 👇👇👇
   const filteredOrders = processedOrders.filter(order => {
     const matchesSearch = (order.productName || '').toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -205,6 +231,7 @@ export default function MyGroupsScreen() {
     const progress = item.liveTargetBuyers > 0 ? item.liveCurrentBuyers / item.liveTargetBuyers : 0;
     const progressPercent = `${Math.min(progress * 100, 100)}%`;
     const missingPeople = Math.max(0, item.liveTargetBuyers - item.liveCurrentBuyers);
+    const daysLeft = getDaysLeft(item.deadline);
     
     const productData = productsMap[item.productId];
     const imageUri = item.productImage || productData?.imageUrl || productData?.image || '';
@@ -221,28 +248,38 @@ export default function MyGroupsScreen() {
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', width: '100%'}}>
                     <Text style={styles.title}>{item.productName}</Text>
                     
-                    {/* מחיקה רק אם זה פעיל */}
-                    {!item.isFullyPaid && !item.isFailed && (
-                        <TouchableOpacity onPress={() => handleLeaveGroup(item.id, item.productId)} style={{padding: 5}}>
-                            <Ionicons name="trash-outline" size={20} color="red" />
-                        </TouchableOpacity>
-                    )}
+                    <View style={{flexDirection: 'row', gap: 10}}>
+                        {/* כפתור שיתוף חדש לקבוצות פעילות */}
+                        {!item.isFullyPaid && !item.isFailed && (
+                            <TouchableOpacity onPress={() => handleShareGroup(item.productName, item.fullPrice)} style={{padding: 5}}>
+                                <Ionicons name="share-social-outline" size={20} color="#4A90E2" />
+                            </TouchableOpacity>
+                        )}
+                        {/* כפתור יציאה */}
+                        {!item.isFullyPaid && !item.isFailed && (
+                            <TouchableOpacity onPress={() => handleLeaveGroup(item.id, item.productId)} style={{padding: 5}}>
+                                <Ionicons name="trash-outline" size={20} color="red" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
                 
                 <Text style={styles.price}>Group Price: ₪{item.fullPrice}</Text>
                 
-                {/* סטטוס מותאם לכישלון */}
                 {item.isFailed ? (
                     <Text style={[styles.paid, {color: '#D32F2F'}]}>Status: Refunded ❌</Text>
                 ) : (
                     <Text style={styles.paid}>Status: {item.isFullyPaid ? 'Completed 🏁' : 'Active 🏃'}</Text>
                 )}
+
+                {/* תצוגת תאריך הזמנה */}
+                <Text style={styles.dateText}>Ordered on: {formatDate(item.timestamp)}</Text>
             </View>
         </View>
 
         <View style={styles.statusSection}>
             
-            {/* 👇 מקרה 1: הקבוצה נכשלה / בוטלה (Refunded) */}
+            {/* מקרה 1: נכשל */}
             {item.isFailed ? (
                 <View style={{marginTop: 5, backgroundColor: '#FFEBEE', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#FFCDD2'}}>
                     <Text style={{color: '#D32F2F', fontWeight: 'bold', fontSize: 16, textAlign: 'center'}}>
@@ -253,7 +290,7 @@ export default function MyGroupsScreen() {
                     </Text>
                 </View>
             ) : item.isCompleted ? (
-              // 👇 מקרה 2: הקבוצה הצליחה
+              // מקרה 2: הצליח
               <>
                 <Text style={[styles.statusTitle, {color: '#4CAF50'}]}>Group Completed! 🎉</Text>
                 <View style={styles.progressBarBackground}>
@@ -284,9 +321,18 @@ export default function MyGroupsScreen() {
                 )}
               </>
             ) : (
-              // 👇 מקרה 3: הקבוצה עדיין פעילה (Waiting)
+              // מקרה 3: פעיל
               <>
-                <Text style={styles.statusTitle}>Waiting for buyers ⏳</Text>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                    <Text style={styles.statusTitle}>Waiting for buyers ⏳</Text>
+                    {/* תצוגת ימים שנותרו */}
+                    {daysLeft !== null && (
+                        <Text style={{fontSize: 12, color: daysLeft < 3 ? 'red' : '#666', fontWeight: 'bold'}}>
+                            {daysLeft} days left
+                        </Text>
+                    )}
+                </View>
+
                 <View style={styles.progressBarBackground}>
                   <View style={[styles.progressBarFill, { width: progressPercent as any }]} /> 
                 </View>
@@ -419,6 +465,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 5, textAlign: 'left', flex: 1 }, 
   price: { fontSize: 16, color: '#333', fontWeight: 'bold', textAlign: 'left' }, 
   paid: { fontSize: 14, color: '#4CAF50', fontWeight: 'bold', marginTop: 5, textAlign: 'left' },
+  dateText: { fontSize: 12, color: '#999', marginTop: 3, textAlign: 'left' },
   
   statusSection: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 },
   statusTitle: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 5, textAlign: 'left' },
