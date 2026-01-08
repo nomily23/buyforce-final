@@ -2,12 +2,12 @@ import { Stack } from 'expo-router';
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* מסך ההתחברות (הראשי) - בלי כותרת */}
-      <Stack.Screen name="index" />
+    <Stack>
+      {/* מסך הכניסה */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       
-      {/* הטאבים הפנימיים - בלי כותרת נוספת מעליהם */}
-      <Stack.Screen name="(tabs)" />
+      {/* 👇 כאן אנחנו מספרים למנהל שיש תיקייה של טאבים */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   );
 }

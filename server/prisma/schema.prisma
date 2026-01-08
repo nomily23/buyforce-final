@@ -1,7 +1,6 @@
-// prisma/schema.prisma
-
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "linux-musl", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -9,63 +8,45 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =======================
-// 1. משתמשים (Users)
-// =======================
 model User {
-  // שינוי: הפכנו את ה-ID ל-String מסוג UUID כדי שיתאים לשאר המערכת
-  id        String   @id @default(uuid()) 
-  email     String   @unique
-  password  String   
-  name      String?
-  createdAt DateTime @default(now())
-
-  // הוספתי את הקשר ההופכי (כדי שיוזר ידע איזה קבוצות יש לו)
-  groupMemberships GroupMember[] 
+  id               String        @id @default(uuid())
+  email            String        @unique
+  password         String
+  name             String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt // הוספנו את זה לניהול טוב יותר
+  groupMemberships GroupMember[]
 }
 
-// =======================
-// 2. מוצרים (Products)
-// =======================
 model Product {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   description String?
-  price       Float    
-  groupPrice  Float    
+  price       Float
+  groupPrice  Float
   image       String?
-  minMembers  Int      
-  
+  minMembers  Int
   groups      Group[]
 }
 
-// =======================
-// 3. קבוצות רכישה (Groups)
-// =======================
 model Group {
-  id             String   @id @default(uuid())
+  id             String        @id @default(uuid())
   productId      String
-  status         String   @default("OPEN") 
+  status         String        @default("OPEN")
   targetMembers  Int
-  currentMembers Int      @default(0)
-  createdAt      DateTime @default(now())
+  currentMembers Int           @default(0)
+  createdAt      DateTime      @default(now())
   deadline       DateTime
-
   product        Product       @relation(fields: [productId], references: [id])
   members        GroupMember[]
 }
 
-// =======================
-// 4. חברי קבוצה (טבלת קישור)
-// =======================
 model GroupMember {
   id            String   @id @default(uuid())
-  userId        String   // עכשיו זה תואם! גם היוזר הוא String
+  userId        String
   groupId       String
   joinedAt      DateTime @default(now())
-  
-  paymentStatus String   @default("PENDING") 
-
+  paymentStatus String   @default("PENDING")
   user          User     @relation(fields: [userId], references: [id])
   group         Group    @relation(fields: [groupId], references: [id])
 }

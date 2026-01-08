@@ -1,45 +1,70 @@
-import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        // 👇👇👇 כאן התיקון: צבעים קבועים וברורים
-        tabBarActiveTintColor: '#e91e63', // ורוד כשהטאב נבחר
-        tabBarInactiveTintColor: 'gray',  // אפור כשהטאב לא נבחר
-        headerShown: false,               // בלי כותרת למעלה
-        tabBarStyle: Platform.select({
-          ios: { position: 'absolute' },
-          default: {},
-        }),
-      }}>
-      
+    <Tabs screenOptions={{ 
+        tabBarActiveTintColor: '#E91E63',
+        tabBarInactiveTintColor: 'gray',
+        headerShown: false 
+    }}>
+
+      {/* 1. דף הבית */}
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
-          title: 'בית',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
         }}
       />
 
+      {/* 2. ווישליסט */}
       <Tabs.Screen
-        name="explore"
+        name="wishlist"
         options={{
-          title: 'הקבוצות שלי',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Wishlist',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart" size={size} color={color} />
+          ),
         }}
       />
 
+      {/* 3. הקבוצות שלי */}
+      <Tabs.Screen
+        name="my-group" 
+        options={{
+          title: 'My Groups',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 4. 👇 החדש: התראות (חייב להיות תואם לשם הקובץ שהעברת!) */}
+      <Tabs.Screen
+        name="notifications" 
+        options={{
+          title: 'Updates',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 5. פרופיל */}
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'פרופיל',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
         }}
       />
+
     </Tabs>
   );
 }

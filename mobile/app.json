@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "buyforce-app",  
+    "slug": "buyforce-app", 
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "buyforce-app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
