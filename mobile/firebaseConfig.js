@@ -1,14 +1,11 @@
-// firebaseConfig.js
 import { initializeApp } from 'firebase/app';
-// 1. Auth - אימות משתמשים
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
-// 2. Firestore - מסד נתונים
+// הוספנו את Platform כדי לזהות אם אנחנו בטלפון או במחשב
+import { Platform } from 'react-native';
+// הוספתי כאן את setPersistence כדי שהאתר לא יקרוס
+import { getAuth, initializeAuth, getReactNativePersistence, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-// 3. Storage - שמירת תמונות (מוצרים/פרופיל)
 import { getStorage } from 'firebase/storage';
-// 4. Analytics - דרישת PRD (סטטיסטיקות)
 import { getAnalytics, isSupported } from 'firebase/analytics';
-// 5. AsyncStorage - לשמירת חיבור משתמש גם כשסוגרים את האפליקציה
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
@@ -24,21 +21,34 @@ const firebaseConfig = {
 // אתחול האפליקציה
 const app = initializeApp(firebaseConfig);
 
-// --- אתחול שירותים ---
+// --- אתחול שירותים עם בדיקת סביבה (Web vs Mobile) ---
 
-// 1. Auth עם שמירה מקומית (כדי שהמשתמש לא יתנתק כל פעם שיוצאים מהאפליקציה)
-export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
+// הוספתי כאן שורת הסבר למחשב (הערה) כדי שלא יהיה אדום ב-register.tsx
+/** @type {import("firebase/auth").Auth} */
+let auth;
+
+if (Platform.OS === 'web') {
+  // בדפדפן: השתמש בשיטה הרגילה של הדפדפן
+  auth = getAuth(app);
+  // תיקון קטן: הפקודה נכתבת ככה בגרסה החדשה (אחרת האתר קורס)
+  setPersistence(auth, browserLocalPersistence);
+} else {
+  // בטלפון (אנדרואיד/אייפון): השתמש ב-AsyncStorage
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+}
+
+// ייצוא המשתנה auth שהוגדר למעלה
+export { auth };
 
 // 2. Database
 export const db = getFirestore(app);
 
-// 3. Storage (בשביל תמונות פרופיל ותמונות מוצרים)
+// 3. Storage
 export const storage = getStorage(app);
 
-// 4. Analytics (רץ רק אם הסביבה תומכת בזה, למניעת קריסות)
-// זה עונה על הדרישה ב-PRD: "Firebase Analytics -> user events"
+// 4. Analytics
 export const analytics = isSupported().then((yes) => yes ? getAnalytics(app) : null);
 
 export default app;

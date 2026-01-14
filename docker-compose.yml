@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # === 1. מסד הנתונים (היה קיים) ===
   db:
     image: postgres:15
     container_name: buyforce_db
@@ -15,14 +14,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # === 2. השרת שלך (החלק שהיה חסר!) ===
   server:
     build: ./server
     container_name: buyforce_server
     ports:
       - "3000:3000"
     environment:
-      # חיבור אוטומטי למסד הנתונים שלמעלה
       DATABASE_URL: postgresql://admin:password123@db:5432/buyforce
     depends_on:
       - db

@@ -74,7 +74,7 @@ export default function CatalogScreen() {
 
   const newArrivals = [...productsByCategory].reverse().slice(0, 5);
 
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = productsByCategory.filter(product => { 
     const title = (product.title || product.name || '').toLowerCase();
     const q = searchQuery.toLowerCase();
     return title.includes(q);
@@ -123,7 +123,10 @@ export default function CatalogScreen() {
       <TouchableOpacity 
         activeOpacity={0.9}
         onPress={() => {
+            // --- תיקון: איפוס החיפוש בכניסה למוצר ---
             setIsSearchVisible(false);
+            setSearchQuery(''); 
+            // ------------------------------------------
             router.push({
                 pathname: '/product-details',
                 params: {
@@ -305,18 +308,29 @@ export default function CatalogScreen() {
       
       <Modal visible={isSearchVisible} animationType="slide" onRequestClose={() => setIsSearchVisible(false)}>
         <SafeAreaView style={styles.modalContainer}>
+              {/* --- תיקון: שורת חיפוש חדשה עם כפתור מחיקה --- */}
               <View style={styles.searchHeader}>
                 <TouchableOpacity onPress={() => setIsSearchVisible(false)}>
                     <Text style={{fontSize: 16, color: '#E91E63', fontWeight: 'bold'}}>Close</Text>
                 </TouchableOpacity>
-                <TextInput 
-                    style={styles.searchInput} 
-                    value={searchQuery} 
-                    onChangeText={setSearchQuery} 
-                    placeholder="Search product..." 
-                    autoFocus={true}
-                />
+                
+                <View style={styles.searchBarContainer}>
+                    <Ionicons name="search" size={20} color="#999" style={{ marginRight: 8 }} />
+                    <TextInput 
+                        style={styles.searchInputInternal} 
+                        value={searchQuery} 
+                        onChangeText={setSearchQuery} 
+                        placeholder="Search product..." 
+                        autoFocus={true}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={20} color="#ccc" />
+                        </TouchableOpacity>
+                    )}
+                </View>
               </View>
+              {/* ------------------------------------------- */}
 
               {searchQuery.trim() === '' ? (
                   <ScrollView style={styles.suggestionsContainer} keyboardShouldPersistTaps="always">
@@ -408,8 +422,36 @@ const styles = StyleSheet.create({
   hotText: { color: '#fff', fontWeight: 'bold', fontSize: 10 },
 
   modalContainer: { flex: 1, backgroundColor: '#f5f5f5' },
-  searchHeader: { padding: 20, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', elevation: 2 },
-  searchInput: { flex: 1, borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 5, marginLeft: 10, textAlign: 'left' },
+  
+  // --- עיצוב חדש לחיפוש ---
+  searchHeader: { 
+      padding: 15, 
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      backgroundColor: '#fff', 
+      elevation: 2,
+      gap: 10 
+  },
+  searchBarContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f5f5f5',
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      height: 40,
+      borderWidth: 1,
+      borderColor: '#eee'
+  },
+  searchInputInternal: {
+      flex: 1,
+      height: '100%',
+      color: '#333',
+      textAlign: 'left',
+      marginLeft: 5
+  },
+  // ------------------------
+
   suggestionsContainer: { padding: 20 },
   suggestionTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 15, marginTop: 10 },
   chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
