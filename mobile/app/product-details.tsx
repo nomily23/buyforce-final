@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, 
-  SafeAreaView, useWindowDimensions, Alert, ActivityIndicator, Share 
+  SafeAreaView, useWindowDimensions, Alert, ActivityIndicator, Share, Platform 
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebaseConfig';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+// הוספנו את setDoc ו-deleteDoc כדי לנהל את המועדפים
+import { collection, query, where, onSnapshot, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export default function ProductDetailsScreen() {
   const router = useRouter();
@@ -43,13 +44,19 @@ export default function ProductDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState('');
 
+  // --- משתנים חדשים למועדפים ---
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+
+  // האזנה לשינויים במוצר (מספר קונים וכו')
   useEffect(() => {
     if (!id) return;
     
     const productRef = doc(db, 'products', String(id));
     const unsubscribe = onSnapshot(productRef, (docSnapshot) => {
         if (docSnapshot.exists()) {
-            const data = docSnapshot.data();            if (data.currentBuyers !== undefined) {
+            const data = docSnapshot.data();
+            if (data.currentBuyers !== undefined) {
                 setDynamicCurrent(data.currentBuyers);
             }
         }
@@ -58,6 +65,7 @@ export default function ProductDetailsScreen() {
     return () => unsubscribe();
   }, [id]);
 
+  // טיימר
   useEffect(() => {
     const calculateTimeLeft = () => {
         const endDate = deadline ? new Date(deadline as string) : new Date(Date.now() + 86400000); 
@@ -83,18 +91,35 @@ export default function ProductDetailsScreen() {
     return () => clearInterval(timer);
   }, [deadline]);
 
+  // בדיקה אם המשתמש כבר הצטרף לקבוצה + בדיקה אם המוצר במועדפים
   useEffect(() => {
     const user = auth.currentUser;
     if (!user || !id) {
         setLoading(false);
         return;
     }
-    const q = query(collection(db, 'orders'), where("userId", "==", user.uid), where("productId", "==", id));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+
+    // בדיקת הזמנות
+    const qOrders = query(collection(db, 'orders'), where("userId", "==", user.uid), where("productId", "==", id));
+    const unsubOrders = onSnapshot(qOrders, (snapshot) => {
         setIsJoined(!snapshot.empty);
         setLoading(false);
     });
-    return () => unsubscribe();
+
+    // --- בדיקת מועדפים (Wishlist Logic) ---
+    // אנחנו יוצרים מזהה ייחודי: UserID_ProductID
+    const wishlistId = `${user.uid}_${id}`; 
+    const wishDocRef = doc(db, 'wishlist', wishlistId);
+    
+    // מאזינים למסמך הזה. אם הוא קיים - הלב יהיה מלא.
+    const unsubWishlist = onSnapshot(wishDocRef, (docSnap) => {
+        setIsFavorite(docSnap.exists());
+    });
+
+    return () => {
+        unsubOrders();
+        unsubWishlist();
+    };
   }, [id]);
 
   const handleShare = async () => {
@@ -105,6 +130,43 @@ export default function ProductDetailsScreen() {
     } catch (error: any) {
       Alert.alert(error.message);
     }
+  };
+
+  // --- הפונקציה החדשה לטיפול בלחיצה על הלב ---
+  const toggleFavorite = async () => {
+      const user = auth.currentUser;
+      if (!user) {
+          const msg = "Please log in to save items.";
+          if (Platform.OS === 'web') alert(msg);
+          else Alert.alert("Login Required", msg);
+          return;
+      }
+
+      setFavLoading(true);
+      const wishlistId = `${user.uid}_${id}`;
+      const wishDocRef = doc(db, 'wishlist', wishlistId);
+
+      try {
+          if (isFavorite) {
+              // אם כבר במועדפים - נמחק את המסמך
+              await deleteDoc(wishDocRef);
+          } else {
+              // אם לא במועדפים - ניצור מסמך חדש עם פרטי המוצר
+              await setDoc(wishDocRef, {
+                  userId: user.uid,
+                  productId: id,
+                  productName: productTitle,
+                  productImage: productImg,
+                  price: groupPrice,
+                  createdAt: new Date()
+              });
+          }
+      } catch (error) {
+          console.error("Error toggling wishlist:", error);
+          if (Platform.OS === 'web') alert("Failed to update wishlist.");
+      } finally {
+          setFavLoading(false);
+      }
   };
 
   const handleJoin = async () => {
@@ -134,7 +196,9 @@ export default function ProductDetailsScreen() {
           currency: 'ILS', 
           productName: productTitle,
           productId: String(id),
-          productImage: productImg
+          productImage: productImg,
+          regularPrice: String(regularP),
+          groupPrice: String(groupP)
         }
     });
   };
@@ -152,23 +216,33 @@ export default function ProductDetailsScreen() {
           headerLeft: () => (
             <TouchableOpacity 
               onPress={() => router.back()} 
-              style={styles.headerButton}
+              style={[styles.headerButton, Platform.OS === 'web' && {cursor:'pointer'} as any]}
             >
               <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
           ),
           headerRight: () => (
             <View style={{flexDirection: 'row', gap: 10}}>
+                {/* --- כפתור הלב המעודכן --- */}
                 <TouchableOpacity 
-                  style={styles.headerButton} 
-                  onPress={() => Alert.alert("Saved", "Added to wishlist!")}
+                  style={[styles.headerButton, Platform.OS === 'web' && {cursor:'pointer'} as any]} 
+                  onPress={toggleFavorite}
+                  disabled={favLoading}
                 >
-                  <Ionicons name="heart-outline" size={24} color="#E91E63" />
+                  {favLoading ? (
+                      <ActivityIndicator size="small" color="#E91E63" />
+                  ) : (
+                      <Ionicons 
+                        name={isFavorite ? "heart" : "heart-outline"} 
+                        size={24} 
+                        color={isFavorite ? "#E91E63" : "#333"} 
+                      />
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   onPress={handleShare} 
-                  style={styles.headerButton}
+                  style={[styles.headerButton, Platform.OS === 'web' && {cursor:'pointer'} as any]}
                 >
                   <Ionicons name="share-social-outline" size={24} color="#333" />
                 </TouchableOpacity>
@@ -256,7 +330,7 @@ export default function ProductDetailsScreen() {
               </View>
 
               <TouchableOpacity 
-                style={[styles.joinButton, (isFull || isJoined) && styles.disabledButton]}
+                style={[styles.joinButton, (isFull || isJoined) && styles.disabledButton, Platform.OS === 'web' && {cursor:'pointer'} as any]}
                 onPress={handleJoin}
                 disabled={isFull || isJoined}
               >

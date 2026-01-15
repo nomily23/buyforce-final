@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView, ScrollView, Linking, Image } from 'react-native';
+import { 
+  StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, 
+  SafeAreaView, ScrollView, Linking, Platform // <--- הוספנו את Platform
+} from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router'; 
-import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { addDoc, collection, doc, updateDoc, increment } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig'; 
 
@@ -9,7 +12,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   
-  const { amount, currency, productName, productId, regularPrice } = params;
+  const { amount, productName, productId, regularPrice } = params;
 
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +22,6 @@ export default function PaymentScreen() {
   const isMembershipFee = parseFloat(currentAmount) === 1;
 
   const regPrice = parseFloat(regularPrice as string || '0');
-  const payAmount = parseFloat(currentAmount);
   const potentialSavings = regPrice > 0 ? regPrice - parseFloat(params.groupPrice as string || currentAmount) : 0;
 
   const PAYPAL_LINK = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${MY_EMAIL}&currency_code=ILS&amount=${currentAmount}&item_name=${productName}`;
@@ -56,20 +58,30 @@ export default function PaymentScreen() {
         setTimeout(() => {
             setLoading(false);
             if (isMembershipFee) {
-                Alert.alert("Welcome! ", "You joined the group successfully.", [
-                    { text: "Go to My Groups", onPress: () => router.push('/(tabs)/my-group') }
-                ]);
+                // בדיקה אם אנחנו במחשב או בטלפון עבור ההודעה
+                if (Platform.OS === 'web') {
+                    alert("Welcome! You joined the group successfully.");
+                    router.push('/(tabs)/my-group');
+                } else {
+                    Alert.alert("Welcome! ", "You joined the group successfully.", [
+                        { text: "Go to My Groups", onPress: () => router.push('/(tabs)/my-group') }
+                    ]);
+                }
             } else {
-                Alert.alert("Payment Received! ", "The product is on its way!", [
-                    { text: "Awesome!", onPress: () => router.push('/(tabs)/my-group') }
-                ]);
+                if (Platform.OS === 'web') {
+                    alert("Payment Received! The product is on its way!");
+                    router.push('/(tabs)/my-group');
+                } else {
+                    Alert.alert("Payment Received! ", "The product is on its way!", [
+                        { text: "Awesome!", onPress: () => router.push('/(tabs)/my-group') }
+                    ]);
+                }
             }
         }, 1500);
         
     } catch (error: any) {
         setLoading(false);
         console.error("Payment Error:", error);
-        // שיפור הודעת שגיאה
         const errMsg = error.message && error.message.includes("network") 
             ? "Network error. Please check your internet connection." 
             : "Payment failed. Please try again.";
@@ -81,28 +93,44 @@ export default function PaymentScreen() {
     const supported = await Linking.canOpenURL(link);
     if (supported) {
         await Linking.openURL(link);
-        Alert.alert(
-            "Secure Payment",
-            "Page opened in browser.\nComplete payment and return here.",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "I Paid! ", onPress: () => processPaymentSuccess() }
-            ]
-        );
+        
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm("Page opened in browser.\nDid you complete the payment?");
+            if (confirmed) processPaymentSuccess();
+        } else {
+            Alert.alert(
+                "Secure Payment",
+                "Page opened in browser.\nComplete payment and return here.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "I Paid! ", onPress: () => processPaymentSuccess() }
+                ]
+            );
+        }
     } else {
         Alert.alert("Error", "Cannot open link.");
     }
   };
 
+  // --- התיקון הגדול למחשב ---
   const handleSavedCardPayment = () => {
-      Alert.alert(
-          "Confirm Payment",
-          `Charge ₪${currentAmount} to Visa •••• 4242?`,
-          [
-              { text: "Cancel", style: "cancel" },
-              { text: "Pay Now", onPress: processPaymentSuccess } 
-          ]
-      );
+      if (Platform.OS === 'web') {
+          // במחשב: משתמשים בחלונית דפדפן רגילה
+          const confirmed = window.confirm(`Confirm Payment:\nCharge ₪${currentAmount} to Visa •••• 4242?`);
+          if (confirmed) {
+              processPaymentSuccess();
+          }
+      } else {
+          // בטלפון: משתמשים ב-Alert המעוצב
+          Alert.alert(
+              "Confirm Payment",
+              `Charge ₪${currentAmount} to Visa •••• 4242?`,
+              [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Pay Now", onPress: processPaymentSuccess } 
+              ]
+          );
+      }
   };
 
   return (
@@ -110,6 +138,7 @@ export default function PaymentScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
+        {/* כפתור חזור - עובד גם במחשב וגם בטלפון */}
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -164,6 +193,7 @@ export default function PaymentScreen() {
             <Text style={[styles.buttonText, {color: '#333'}]}>New Credit Card</Text>
         </TouchableOpacity>
 
+        {/* כפתור ביטול - משתמש גם הוא ב-router.back() */}
         <TouchableOpacity onPress={() => router.back()} style={styles.cancelLink}>
             <Text style={styles.cancelText}>Cancel Transaction</Text>
         </TouchableOpacity>
@@ -197,7 +227,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 50, 
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee', elevation: 2
   },
-  backButton: { padding: 5, marginRight: 15 },
+  backButton: { padding: 5, marginRight: 15, cursor: 'pointer' }, // הוספתי cursor למחשב
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
   content: { padding: 20, alignItems: 'center', paddingBottom: 50 },
   
@@ -224,7 +254,9 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#999', marginBottom: 8, marginLeft: 5 },
   savedCardButton: {
       backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      padding: 16, borderRadius: 14, borderWidth: 1.5, borderColor: '#E91E63', elevation: 1
+      padding: 16, borderRadius: 14, borderWidth: 1.5, borderColor: '#E91E63', elevation: 1,
+      // הוספה למחשב:
+      cursor: 'pointer'
   },
   savedCardText: { fontWeight: 'bold', color: '#333', fontSize: 16 },
   savedCardSub: { color: '#666', fontSize: 13 },
@@ -234,21 +266,22 @@ const styles = StyleSheet.create({
   paypalButton: {
     backgroundColor: '#0070BA', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     width: '100%', padding: 16, borderRadius: 30, marginBottom: 15, elevation: 2,
-    shadowColor: '#0070BA', shadowOpacity: 0.3, shadowOffset: {width:0, height:4}, shadowRadius: 6
+    shadowColor: '#0070BA', shadowOpacity: 0.3, shadowOffset: {width:0, height:4}, shadowRadius: 6,
+    cursor: 'pointer'
   },
   creditCardButton: {
     backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    width: '100%', padding: 16, borderRadius: 30, marginBottom: 20, elevation: 1, borderWidth: 1, borderColor: '#ddd'
+    width: '100%', padding: 16, borderRadius: 30, marginBottom: 20, elevation: 1, borderWidth: 1, borderColor: '#ddd',
+    cursor: 'pointer'
   },
   buttonText: { fontSize: 16, fontWeight: 'bold', color: 'white' },
-  cancelLink: { padding: 10, marginBottom: 20 },
+  cancelLink: { padding: 10, marginBottom: 20, cursor: 'pointer' },
   cancelText: { color: '#888', fontSize: 14, textDecorationLine: 'underline' },
 
   trustBadgesContainer: { alignItems: 'center', marginTop: 10, opacity: 0.7 },
   trustFooterText: { fontSize: 12, color: '#888', marginBottom: 8 },
   cardIconsRow: { flexDirection: 'row', gap: 15 },
   cardIcon: { opacity: 0.8 },
-
   
   loaderOverlay: {
       position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
