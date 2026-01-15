@@ -1,90 +1,109 @@
 #  BuyForce - Group Buying Platform (MVP)
 
-BuyForce is a mobile application enabling users to join purchasing groups to unlock wholesale prices on high-value products. The platform leverages collective buying power to secure discounts.
+> **Unlock wholesale prices through collective purchasing power.**
 
-> **Project for Mobile Development Course**
-> **Stack:** React Native (Expo) | Firebase | Docker | PostgreSQL
+**BuyForce** is a cross-platform mobile application developed with **React Native (Expo)**. It enables users to join purchasing groups for high-value products. The transaction is finalized only when the group reaches its target number of buyers, ensuring the best possible price for everyone.
 
 ---
 
-## Key Features Implemented
+## 📱 Key Features & Technical Implementation
 
-* **Group Buying Engine:** Users can join product groups; transaction processes only if the target is met.
-* **Biometric Authentication:** Secure login using FaceID / TouchID (`expo-local-authentication`).
-* **Smart Catalog:** Trending products, "Near Goal" alerts, and category filtering.
-* **Search & Discovery:** Recent searches, trending terms, and live search.
-* **Social Sharing:** "Invite a Friend" modal using native sharing capabilities.
-* **Payment Management:** Saving credit cards (Default/Secondary) with secure UI and validations.
-* **Data Persistence:** Firebase for real-time data & Dockerized PostgreSQL for analytics infrastructure.
+###  Group Buying Engine
+* **Real-Time Progress:** Uses **Firebase Firestore Listeners (`onSnapshot`)** to update the buyer count and progress bar instantly without refreshing.
+* **Smart Logic:** Calculates remaining buyers needed and automatically closes groups upon reaching the target.
+* **Membership Fee:** Users pay a symbolic ₪1 fee to join, and the full amount only upon success.
+
+### Secure Authentication & User Management
+* **Onboarding Flow:** The `index.tsx` entry point performs a background **Auth Check**. If a user is logged in, they are redirected immediately to the Home screen.
+* **Hybrid Login:** Support for Email/Password and **Google OAuth**.
+* **Biometric Security:** Integrated FaceID/TouchID for quick access using `expo-local-authentication`.
+
+###  Smart Checkout & Wallet
+* **Cross-Platform Payment:** The `payment.tsx` screen is fully compatible with both **Mobile (Native Alerts)** and **Web (Window Confirm)**.
+* **Wallet Management:** `payment-methods.tsx` allows users to perform **CRUD operations** on credit cards locally.
+* **Transaction History:** A dedicated "My Groups" tab tracking Active vs. Completed orders by merging data from `Orders` and `Products` collections.
+
+###  Admin & Automation (Simulation)
+* **Batch Processing:** The Profile screen includes an "Admin Zone" button ("Run Daily System Checks").
+* **Logic:** This simulates a server cron-job that:
+    1. Identifies expired groups.
+    2. Processes automatic refunds (changing status to `REFUNDED`).
+    3. Triggers notification emails using **Firestore Batch Writes**.
 
 ---
 
 ##  Tech Stack
 
-### Frontend (Mobile)
+### Frontend (Mobile & Web)
 * **Framework:** React Native with Expo (SDK 52).
-* **Language:** TypeScript.
-* **Navigation:** Expo Router (File-based routing).
-* **Styling:** StyleSheet & Vector Icons.
+* **Navigation:** Expo Router (Stack & Tabs).
+* **Components:** `FlatList` for optimized rendering of product lists.
+* **Styling:** StyleSheet & Vector Icons (Ionicons).
 
-### Backend & Cloud
-* **Firebase Auth:** User authentication & persistence.
-* **Firebase Firestore:** NoSQL database for products, orders, and users.
-* **Firebase Storage:** Hosting product images.
-* **Firebase Analytics:** User events tracking.
+### Backend & Cloud Services (Firebase)
+* **Auth:** User authentication & session persistence (`AsyncStorage`).
+* **Firestore (NoSQL):** Real-time database.
+* **Storage:** Hosting product images.
 
 ### Analytics Infrastructure (Dockerized)
-* **Docker:** Containerized environment.
-* **Node.js (Express):** Backend server for metrics.
-* **PostgreSQL:** Relational database for long-term data warehousing.
+* **Containerization:** **Docker** & **Docker Compose** used to run the backend services.
+* **Backend:** Node.js (Express) server.
+* **Database:** PostgreSQL.
 
 ---
 
-##  Installation & Running
+## Project Structure & Architecture
 
-### Prerequisites
-* Node.js installed.
-* Expo Go app on your mobile device (iOS/Android).
-* Docker Desktop (for the analytics server).
+The project follows the **Expo Router** architecture:
 
-###  Clone the Repository
-```bash
+```plaintext
+BUYFORCE-APP
+├── app/                     
+│   ├── _layout.tsx          # Root Stack Navigation: Manages global navigation (Login -> Tabs -> Modal).
+│   ├── index.tsx            # Entry Point: Handles Onboarding slides & Auth state checks.
+│   ├── (tabs)/              # Bottom Tab Layout:
+│   │   ├── _layout.tsx      # Tab Config: Defines bottom menu appearance & icons.
+│   │   ├── home.tsx         # Catalog: Uses FlatList with Category Filtering & Search logic.
+│   │   ├── my-group.tsx     # Orders: Displays Active vs History groups using Data Joins.
+│   │   └── profile.tsx      # User Hub: Includes the Admin Batch Processing logic.
+│   ├── product-details.tsx  # Dynamic Page: Handles "Join" logic and Wishlist toggling (setDoc/deleteDoc).
+│   ├── payment.tsx          # Checkout: Processes payments and updates Firestore (Orders + Product count).
+│   ├── login.tsx            # Auth: Handles Login/Register with Firebase.
+│   └── modal.tsx            # Share: Implements Native Sharing API.
+├── server/                  # 🐳 Backend Services
+│   ├── index.js             # Node.js Analytics Server.
+│   ├── Dockerfile           # Defines the container image for the server.
+│   └── package.json         # Server dependencies.
+├── docker-compose.yml       # Orchestration: Runs the Server + PostgreSQL DB together.
+└── firebaseConfig.js        # Firebase configuration & environment setup.
+Installation & Running
+Prerequisites
+Node.js installed.
+
+Expo Go app on your mobile device.
+
+Docker Desktop (optional, for the analytics server).
+
+1. Clone the Repository
+Bash
+
 git clone [https://github.com/nomily23/buyforce-app.git](https://github.com/nomily23/buyforce-app.git)
 cd buyforce-app
-Run the Mobile App (Expo)
+2. Run the Mobile App
 Bash
 
 # Install dependencies
 npm install
 
-# Start the app (with cache clearing)
+# Start the app
 npx expo start -c
 Scan the QR code with your phone to launch the app.
 
-3. Run the Analytics Server (Docker)
+3. Run the Backend Server (Docker)
 To spin up the PostgreSQL database and the Node.js server:
 
 Bash
 
-# From the root directory
 docker-compose up --build
-Server Check: Open http://localhost:3000
-
-DB Check: Open http://localhost:3000/db-check
-
-📂 Project Structure
-Plaintext
-
-BUYFORCE-APP
-├── app/                 # Expo Router screens & navigation
-│   ├── (tabs)/          # Main tabs (Home, Profile, Orders)
-│   ├── product-details/ # Dynamic product page
-│   ├── login.tsx        # Auth & Biometric login
-│   ├── payment.tsx      # Payment processing screen
-│   └── modal.tsx        # Invite friends screen
-├── server/              # Backend for Analytics
-│   ├── index.js         # Express server
-│   ├── Dockerfile       # Server container config
-│   └── package.json     # Server dependencies
-├── docker-compose.yml   # Docker orchestration (DB + Server)
-└── firebaseConfig.js    # Firebase connection
+Author
+Nomily Daniely Mobile Development Course Final Project
